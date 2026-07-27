@@ -1,0 +1,7 @@
+.git
+.claude
+.agents
+bin
+data
+node_modules
+web/static/dist
