@@ -1,5 +1,3 @@
-![boobies-media banner](assets/brand/banner.png)
-
 <p align="center">
   <img src="assets/brand/logo.png" width="160" alt="Blue-footed booby bird logo">
 </p>
