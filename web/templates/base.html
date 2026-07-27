@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{template "title" .}} · boobies·media</title>
+<link rel="stylesheet" href="/static/dist/main.css">
+<script type="module" src="/static/dist/main.js" defer></script>
+</head>
+<body>
+{{if .User}}
+<header class="topbar">
+  <div class="topbar__brand"><a href="/">boobies&middot;media</a></div>
+  <div class="topbar__spacer"></div>
+  <div class="topbar__user">
+    <span>{{.User.DisplayName}}</span>
+    {{if .User.IsAdmin}}<a href="/admin" class="topbar__admin">Admin</a>{{end}}
+    <form method="post" action="/logout"><button type="submit">Sign out</button></form>
+  </div>
+</header>
+{{end}}
+<main>
+{{template "content" .}}
+</main>
+</body>
+</html>

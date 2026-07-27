@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /s/
+Allow: /m/
+Allow: /t/
+Disallow: /

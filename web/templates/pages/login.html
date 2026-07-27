@@ -1,0 +1,31 @@
+{{define "title"}}Sign in{{end}}
+{{define "content"}}
+<div class="login-page">
+  <div class="login-page__center">
+    <section class="login">
+      <div class="login__brand">
+        <h1>boobies&middot;media</h1>
+        <p>Private archive. Accounts are made by hand.</p>
+      </div>
+      {{if .Error}}<p class="error-banner" role="alert">{{.Error}}</p>{{end}}
+      <form method="post" action="/login" novalidate>
+        <input type="hidden" name="next" value="{{.Next}}">
+        <div class="field" style="margin-bottom:16px;">
+          <label class="field-label" for="username">Username</label>
+          <input id="username" name="username" type="text" autocomplete="username" autofocus required
+                 {{if .Error}}aria-invalid="true"{{end}}>
+        </div>
+        <div class="field" style="margin-bottom:24px;">
+          <label class="field-label" for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required
+                 {{if .Error}}aria-invalid="true"{{end}}>
+        </div>
+        <button type="submit">Sign in</button>
+      </form>
+    </section>
+  </div>
+  <div class="login-page__footer">
+    <span>invite-only</span>
+  </div>
+</div>
+{{end}}

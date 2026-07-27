@@ -1,0 +1,273 @@
+{{define "title"}}Browse{{end}}
+{{define "content"}}
+{{$data := .Data}}
+{{$fid := $data.ActiveFolderID}}
+{{$activeTag := $data.ActiveTag}}
+{{$up := $data.ActiveUploader}}
+{{$q := $data.Query}}
+{{$sort := $data.Sort}}
+<div class="browse">
+  <section class="toolbar" role="search">
+    <button type="button" class="folder-sheet-trigger" data-action="toggle-folders"
+            aria-haspopup="dialog" aria-expanded="false" aria-controls="folder-sheet">
+      <svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M1.5 3.5h4l1.4 2h7.6v8h-13z"></path></svg>
+      <span class="visually-hidden">Folders</span>
+    </button>
+    <form method="get" action="/" style="display:contents;">
+      <input type="hidden" name="folder" value="{{if $data.HasActiveFolder}}{{$fid}}{{end}}">
+      <input type="hidden" name="tag" value="{{$activeTag}}">
+      <input type="hidden" name="uploader" value="{{if $up}}{{$up}}{{end}}">
+      <label class="toolbar__search">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="7" cy="7" r="4.6"></circle><path d="M10.5 10.5L14 14"></path></svg>
+        <span class="visually-hidden">Search titles</span>
+        <input type="search" name="q" placeholder="Search titles" value="{{$q}}">
+      </label>
+      <select name="sort" class="toolbar__sort" aria-label="Sort order">
+        <option value="newest" {{if eq $sort "newest"}}selected{{end}}>Newest first</option>
+        <option value="oldest" {{if eq $sort "oldest"}}selected{{end}}>Oldest first</option>
+        <option value="name" {{if eq $sort "name"}}selected{{end}}>Title A-Z</option>
+        <option value="size" {{if eq $sort "size"}}selected{{end}}>Largest file</option>
+        <option value="uploader" {{if eq $sort "uploader"}}selected{{end}}>By uploader</option>
+      </select>
+      <button type="submit" class="btn btn--quiet">Apply</button>
+    </form>
+    <div class="toolbar__spacer"></div>
+    <button type="button" class="btn uploader-trigger" data-action="toggle-uploader"
+            aria-haspopup="true" aria-expanded="false" aria-controls="uploader-panel">
+      Upload
+      <span class="uploader-trigger__count" data-role="queue-count" hidden>0</span>
+    </button>
+  </section>
+
+  <div class="browse__body">
+    <aside class="rails" aria-label="Filters">
+      <nav class="rails__section" aria-label="Folders"
+           data-island="folders" data-current="{{if $data.HasActiveFolder}}{{$fid}}{{end}}">
+        <div class="rails__heading"><span>Folders</span></div>
+        <a class="folder-row{{if not $data.HasActiveFolder}} folder-row--active{{end}}"
+           href="{{queryString "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}">Library</a>
+        {{range $data.Folders}}
+        <a class="folder-row{{if and $data.HasActiveFolder (eq $data.ActiveFolderID .Folder.ID)}} folder-row--active{{end}}"
+           style="padding-left:{{indent .Depth}}px"
+           href="{{queryString "folder" .Folder.ID "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}">{{.Folder.Name}}</a>
+        {{end}}
+      </nav>
+
+      {{if $data.Tags}}
+      <nav class="rails__section" aria-label="Tags">
+        <div class="rails__heading"><span>Tags</span></div>
+        <div class="rails__tags">
+          {{range $data.Tags}}
+          {{$isActive := eq $activeTag .}}
+          <a class="chip{{if $isActive}} chip--active{{end}}"
+             href="{{if $isActive}}{{queryString "folder" $fid "tag" "" "uploader" $up "q" $q "sort" $sort}}{{else}}{{queryString "folder" $fid "tag" . "uploader" $up "q" $q "sort" $sort}}{{end}}">{{.}}{{if $isActive}} <span aria-hidden="true">&#215;</span>{{end}}</a>
+          {{end}}
+        </div>
+      </nav>
+      {{end}}
+
+      {{if $data.Uploaders}}
+      <nav class="rails__section" aria-label="Uploaders">
+        <div class="rails__heading"><span>Uploaders</span></div>
+        <div class="rails__uploaders">
+          {{range $data.Uploaders}}
+          {{$isActive := eq $up .ID}}
+          <a class="uploader-row{{if $isActive}} uploader-row--active{{end}}"
+             href="{{if $isActive}}{{queryString "folder" $fid "tag" $activeTag "uploader" 0 "q" $q "sort" $sort}}{{else}}{{queryString "folder" $fid "tag" $activeTag "uploader" .ID "q" $q "sort" $sort}}{{end}}">{{.Username}}</a>
+          {{end}}
+        </div>
+      </nav>
+      {{end}}
+    </aside>
+
+    <main class="browse__main">
+      <div class="crumbbar">
+        <nav class="crumbbar__path" aria-label="Current folder">
+          <a href="{{queryString "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}">Library</a>
+          {{range $i, $f := $data.FolderPath}}
+          <span aria-hidden="true">/</span>
+          {{if eq $i $data.FolderPathLastIndex}}
+          <span class="crumbbar__current">{{$f.Name}}</span>
+          {{else}}
+          <a href="{{queryString "folder" $f.ID "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}">{{$f.Name}}</a>
+          {{end}}
+          {{end}}
+        </nav>
+        <div class="crumbbar__filters">
+          {{if $activeTag}}
+          <span class="chip">tag: {{$activeTag}}
+            <a class="chip__remove" href="{{queryString "folder" $fid "tag" "" "uploader" $up "q" $q "sort" $sort}}" aria-label="Remove tag filter">&#215;</a>
+          </span>
+          {{end}}
+          {{if $q}}
+          <span class="chip">q: &#8220;{{$q}}&#8221;
+            <a class="chip__remove" href="{{queryString "folder" $fid "tag" $activeTag "uploader" $up "sort" $sort}}" aria-label="Clear search">&#215;</a>
+          </span>
+          {{end}}
+        </div>
+        <div class="crumbbar__spacer"></div>
+        <span class="crumbbar__count" data-role="grid-count">{{$data.ItemCount}} loaded</span>
+      </div>
+
+      <div class="bulkbar" data-island="bulkselect" hidden>
+        <label class="bulkbar__toggle">
+          <input type="checkbox" data-action="select-mode">
+          <span>Select</span>
+        </label>
+        <span class="bulkbar__count" data-role="count" role="status" aria-live="polite">0 selected</span>
+        <div class="bulkbar__spacer"></div>
+        <button type="button" class="btn btn--quiet" data-action="bulk-move" disabled>Move</button>
+        <button type="button" class="btn btn--quiet" data-action="bulk-tag" disabled>Tag</button>
+        <button type="button" class="btn btn--danger" data-action="bulk-delete" disabled>Delete</button>
+      </div>
+
+      <div class="grid-scroll">
+        <ul class="grid" data-island="grid" role="list"
+            data-cursor="{{$data.NextCursor}}" data-sort="{{$sort}}"
+            data-tag="{{$activeTag}}" data-folder="{{if $data.HasActiveFolder}}{{$fid}}{{end}}"
+            data-uploader="{{if $up}}{{$up}}{{end}}" data-q="{{$q}}">
+          {{range $data.Items}}
+          <li class="tile{{if not .ready}} tile--processing{{end}}" role="listitem"
+              data-item-id="{{.id}}" data-role="tile" data-mime="{{.mime}}" data-media-url="{{.media_url}}"
+              style="--aspect:{{aspectRatio .width .height}}">
+            <label class="tile__select">
+              <input type="checkbox" data-action="select-item" aria-label="Select {{.title}}">
+            </label>
+            <button type="button" class="tile__button" data-action="open" aria-label="Open {{.title}}">
+              <img class="tile__image" src="/t/{{.id}}?s=320" alt="" loading="lazy" width="320" height="320">
+              {{if not .ready}}
+              <span class="tile__processing" aria-hidden="true">
+                <span class="tile__processing-label">PROCESSING</span>
+                <span class="tile__processing-meter"></span>
+                <span class="tile__processing-name">{{.title}}</span>
+              </span>
+              {{else}}
+              {{if .is_video}}<span class="tile__badge">&#9654; {{fmtDuration .duration}}</span>
+              {{else if .is_gif}}<span class="tile__badge">GIF</span>{{end}}
+              <span class="tile__cap">
+                <span class="tile__cap-title">{{.title}}</span>
+                <span class="tile__cap-meta"><span>{{if .is_video}}{{fmtDuration .duration}} &#183; {{end}}{{fmtBytes .size}}</span><span>{{if .width}}{{.width}}&#215;{{.height}}{{end}}</span></span>
+              </span>
+              {{end}}
+            </button>
+          </li>
+          {{else}}
+          <li class="empty" data-role="empty">
+            <span class="empty__mark" aria-hidden="true"><span></span></span>
+            <p class="empty__title">Nothing here yet</p>
+            <p class="empty__body">Drop a video or a photo and it lands on the sheet for everyone. Nobody outside this box can see it.</p>
+            <button type="button" class="btn" data-action="empty-upload">Choose files</button>
+          </li>
+          {{end}}
+        </ul>
+        <p class="grid__status" data-role="grid-status" hidden>Loading&#8230;</p>
+      </div>
+
+      <div class="status-bar">
+        <span>sort &#183; {{$sort}}</span>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="uploader" id="uploader-panel" data-island="uploader" hidden data-active-folder="{{if $data.HasActiveFolder}}{{$fid}}{{end}}">
+  <div class="uploader__backdrop" data-action="close"></div>
+  <aside class="uploader__panel" aria-label="Upload queue">
+    <div class="uploader__head">
+      <h2>Uploading</h2>
+      <span class="uploader__summary" data-role="summary" hidden></span>
+      <div class="uploader__spacer"></div>
+      <button type="button" class="uploader__close" data-action="close" aria-label="Close upload queue">&#215;</button>
+    </div>
+    <div class="dropzone" data-role="dropzone">
+      <div class="dropzone__text">
+        <span class="dropzone__title" data-role="dropzone-title">Drop files here</span>
+        <span class="dropzone__hint">jpeg png gif webp avif mp4 webm &#183; max 8 GiB &#183; chunk 12 MiB</span>
+      </div>
+      <input type="file" id="file-input" multiple hidden
+             accept="image/jpeg,image/png,image/gif,image/webp,image/avif,video/mp4,video/webm">
+      <button type="button" class="btn" data-action="pick">Choose</button>
+    </div>
+    <form class="uploads__urlform" data-role="urlform">
+      <input type="url" name="url" required
+             placeholder="Paste a Twitter, YouTube, TikTok, Medal, image, or video link"
+             aria-label="Paste a media link">
+      <button type="submit" class="btn">Ingest</button>
+    </form>
+    <ul class="uploads" data-role="progress"></ul>
+  </aside>
+</div>
+
+<div class="folder-sheet" id="folder-sheet" data-island="folder-sheet" hidden>
+  <div class="folder-sheet__backdrop" data-action="close"></div>
+  <div class="folder-sheet__panel" role="dialog" aria-modal="true" aria-label="Folders">
+    <span class="folder-sheet__grabber" aria-hidden="true"></span>
+    <div class="folder-sheet__head">
+      <span class="folder-sheet__heading">Folders</span>
+      <button type="button" class="folder-sheet__close" data-action="close" aria-label="Close folders">&#215;</button>
+    </div>
+    <nav class="folder-sheet__list" aria-label="Folders">
+      <a class="folder-sheet__row{{if not $data.HasActiveFolder}} folder-sheet__row--active{{end}}"
+         href="{{queryString "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}">Library</a>
+      {{range $data.Folders}}
+      <a class="folder-sheet__row{{if and $data.HasActiveFolder (eq $data.ActiveFolderID .Folder.ID)}} folder-sheet__row--active{{end}}"
+         style="padding-left:{{indent .Depth}}px"
+         href="{{queryString "folder" .Folder.ID "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}">{{.Folder.Name}}</a>
+      {{end}}
+    </nav>
+  </div>
+</div>
+
+<div class="lightbox" data-island="lightbox" hidden role="dialog" aria-modal="true" aria-label="Item viewer">
+  <div class="lightbox__backdrop" data-action="close"></div>
+  <figure class="lightbox__panel">
+    <div class="lightbox__head">
+      <span class="lightbox__id" data-role="id"></span>
+      <div class="lightbox__head-spacer"></div>
+      <span class="lightbox__hint">Esc close</span>
+      <button type="button" class="lightbox__close" data-action="close" aria-label="Close viewer">&#215;</button>
+    </div>
+    <div class="lightbox__body">
+      <div class="lightbox__media" data-role="media"></div>
+      <figcaption class="lightbox__meta">
+        <div class="lightbox__field">
+          <span class="field-label">Title</span>
+          <input class="lightbox__title" data-role="title" aria-label="Title">
+          <span class="lightbox__hint-small">Enter saves</span>
+        </div>
+        <dl class="lightbox__dl" data-role="meta"></dl>
+        <div class="lightbox__field">
+          <span class="field-label">Folder</span>
+          <select class="lightbox__folder" data-role="folder" aria-label="Folder">
+            <option value="0">Library</option>
+            {{range $data.Folders}}
+            <option value="{{.Folder.ID}}">{{.IndentedName}}</option>
+            {{end}}
+          </select>
+        </div>
+        <div class="lightbox__field">
+          <span class="field-label">Tags</span>
+          <div class="lightbox__tags" data-role="tags"></div>
+          <form class="lightbox__tagform" data-role="tagform">
+            <input name="tag" placeholder="add tag&#8230;" aria-label="Add a tag">
+          </form>
+        </div>
+        <div class="lightbox__grow"></div>
+        <div class="lightbox__actions">
+          <div class="lightbox__actions-row">
+            <button type="button" class="btn btn--quiet" data-action="copy">Copy share link</button>
+            <a class="btn btn--quiet" data-role="download" href="#" download>Download</a>
+          </div>
+          <p class="lightbox__links">
+            <a data-role="share" href="#" target="_blank" rel="noopener">Share link</a>
+            <a data-role="source" href="#" target="_blank" rel="noopener noreferrer" hidden>Source</a>
+          </p>
+          <button type="button" class="btn btn--danger" data-action="delete">Delete</button>
+          <p class="lightbox__error error-banner" data-role="error" hidden role="alert"></p>
+        </div>
+      </figcaption>
+    </div>
+  </figure>
+  <script id="uploader-directory" type="application/json">{{$data.UploaderDirectory}}</script>
+</div>
+{{end}}

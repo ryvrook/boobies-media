@@ -1,0 +1,111 @@
+{{define "title"}}Admin{{end}}
+{{define "content"}}
+{{$data := .Data}}
+<section class="admin" data-island="admin">
+  <h1 class="admin__heading">Admin</h1>
+
+  {{if not $data.DepsAllOK}}
+  <div class="banner banner--warn" role="alert">
+    <strong>Some external tools are unavailable.</strong> Related jobs will fail with a clear error until they are installed.
+    <ul>
+      {{range $data.Deps}}{{if not .OK}}<li>{{.Name}}: {{.Err}}</li>{{end}}{{end}}
+    </ul>
+  </div>
+  {{end}}
+
+  <details class="admin__deps">
+    <summary>Dependency versions</summary>
+    <ul>
+      {{range $data.Deps}}
+      <li>{{.Name}}: {{if .OK}}{{.Version}} ({{.Path}}){{else}}<span class="admin__bad">missing: {{.Err}}</span>{{end}}</li>
+      {{end}}
+    </ul>
+  </details>
+
+  <h2>Users</h2>
+  <p class="admin__newkey" data-role="new-key" hidden></p>
+  <table class="admin__table">
+    <thead><tr><th>Username</th><th>Display</th><th>Admin</th><th>Items</th><th>API key</th><th>Actions</th></tr></thead>
+    <tbody>
+      {{range $data.Users}}
+      <tr data-user-id="{{.ID}}" data-is-admin="{{.IsAdmin}}">
+        <td>{{.Username}}</td>
+        <td>{{.DisplayName}}</td>
+        <td>{{if .IsAdmin}}yes{{else}}no{{end}}</td>
+        <td>{{.ItemCount}}</td>
+        <td>{{if .HasKey}}set{{else}}none{{end}}</td>
+        <td class="admin__actions">
+          <button type="button" data-action="toggle-admin">{{if .IsAdmin}}Revoke admin{{else}}Make admin{{end}}</button>
+          <button type="button" data-action="reset-password">Reset password</button>
+          <button type="button" data-action="rotate-key">Rotate key</button>
+          <button type="button" data-action="delete-user" class="danger">Delete</button>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+
+  <form class="admin__create" data-role="create-user">
+    <h3>Add a friend</h3>
+    <input name="username" type="text" placeholder="username" required>
+    <input name="display_name" type="text" placeholder="display name">
+    <input name="password" type="password" placeholder="password" required>
+    <label><input type="checkbox" name="is_admin"> admin</label>
+    <button type="submit">Create</button>
+  </form>
+
+  <h2>Settings</h2>
+  <form class="admin__settings" data-role="settings">
+    {{range $data.Settings}}
+    <label class="admin__setting">
+      <span>{{.Label}}</span>
+      <input name="{{.Key}}" type="text" value="{{.Value}}">
+    </label>
+    {{end}}
+    <button type="submit">Save settings</button>
+  </form>
+
+  <h2>Ingest self-test</h2>
+  <p class="admin__hint">Enqueue a known-good link per source to check whether cookies and tools still work.</p>
+  <div class="admin__tests">
+    {{range $data.Extractors}}
+    <button type="button" data-action="test-ingest" data-extractor="{{.}}">Test {{.}}</button>
+    {{end}}
+  </div>
+  <p class="admin__testresult" data-role="test-result" hidden></p>
+
+  <h2>Job queue</h2>
+  <table class="admin__table">
+    <thead><tr><th>ID</th><th>Type</th><th>Status</th><th>Attempts</th><th>Error</th><th></th></tr></thead>
+    <tbody>
+      {{range $data.Jobs}}
+      <tr data-job-id="{{.ID}}">
+        <td>{{.ID}}</td>
+        <td>{{.Type}}</td>
+        <td>{{.Status}}</td>
+        <td>{{.Attempts}}</td>
+        <td class="admin__err">{{.Error}}</td>
+        <td>{{if eq .Status "failed"}}<button type="button" data-action="retry-job">Retry</button>{{end}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+
+  <h2>Trash</h2>
+  <table class="admin__table">
+    <thead><tr><th>Title</th><th>Item</th><th>Actions</th></tr></thead>
+    <tbody>
+      {{range $data.Trash}}
+      <tr data-item-id="{{.id}}">
+        <td>{{.title}}</td>
+        <td><a href="/s/{{.id}}" target="_blank" rel="noopener">{{.id}}</a></td>
+        <td class="admin__actions">
+          <button type="button" data-action="restore-item">Restore</button>
+          <button type="button" data-action="purge-item" class="danger">Purge</button>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
