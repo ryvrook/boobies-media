@@ -1,0 +1,4 @@
+# Pin dependency versions exactly if islands ever gain one. The JS budget for
+# the whole frontend is under 50 KB, so this should stay near-empty.
+[install]
+exact = true

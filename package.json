@@ -1,0 +1,9 @@
+{
+  "name": "boobies-media-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun build ./web/src/main.ts --outdir ./web/static/dist --minify --target browser",
+    "watch": "bun build ./web/src/main.ts --outdir ./web/static/dist --target browser --watch"
+  }
+}
