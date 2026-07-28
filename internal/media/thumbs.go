@@ -122,3 +122,51 @@ func (s *Store) GenerateSocialPreview(ctx context.Context, srcPath, dstPath stri
 	}
 	return nil
 }
+
+// GenerateSocialAnimation converts an animated image to a bounded H.264 MP4,
+// the format Discord-style Open Graph video embeds can play inline.
+func (s *Store) GenerateSocialAnimation(ctx context.Context, srcPath, dstPath string) error {
+	if _, err := os.Stat(dstPath); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(dstPath), 0o750); err != nil {
+		return fmt.Errorf("media: create social animation directory: %w", err)
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(dstPath), ".social-*.mp4")
+	if err != nil {
+		return fmt.Errorf("media: create social animation: %w", err)
+	}
+	tmpPath := tmp.Name()
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return err
+	}
+	defer os.Remove(tmpPath)
+
+	args := []string{
+		"-v", "error", "-y",
+		"-i", srcPath,
+		"-vf", "scale='min(1280,iw)':'min(1280,ih)':force_original_aspect_ratio=decrease:flags=lanczos,pad=ceil(iw/2)*2:ceil(ih/2)*2",
+		"-an",
+		"-c:v", "libx264",
+		"-preset", "fast",
+		"-crf", "23",
+		"-pix_fmt", "yuv420p",
+		"-movflags", "+faststart",
+		"-f", "mp4",
+		tmpPath,
+	}
+	if _, err := s.Runner.Run(ctx, "ffmpeg", args...); err != nil {
+		return err
+	}
+	info, err := os.Stat(tmpPath)
+	if err != nil || info.Size() == 0 {
+		return fmt.Errorf("media: ffmpeg wrote no social animation")
+	}
+	if err := os.Rename(tmpPath, dstPath); err != nil {
+		return fmt.Errorf("media: place social animation: %w", err)
+	}
+	return nil
+}

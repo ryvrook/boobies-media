@@ -3,12 +3,55 @@ package web
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"boobies-media/internal/db"
 	"boobies-media/internal/media"
 )
+
+func TestAdminBatchRestoreAndPurge(t *testing.T) {
+	ctx := context.Background()
+	srv, mediaStore, _ := mediaTestServer(t)
+	cookie := adminCookie(t, srv, "boss")
+	admin, _ := srv.Store.UserByUsername(ctx, "boss")
+	items := seedItems(t, mediaStore, admin.ID, "restore-me", "purge-me")
+	for _, item := range items {
+		if err := srv.Store.SoftDeleteItem(ctx, item.ID, admin); err != nil {
+			t.Fatalf("SoftDeleteItem: %v", err)
+		}
+	}
+
+	restoreBody, _ := json.Marshal(map[string]any{"action": "restore", "ids": []string{items[0].ID}})
+	rec := apiRequest(t, srv, cookie, http.MethodPost, "/api/admin/items/batch", string(restoreBody))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"applied":1`) {
+		t.Fatalf("batch restore status/body = %d %s", rec.Code, rec.Body.String())
+	}
+	if _, err := srv.Store.ItemByID(ctx, items[0].ID); err != nil {
+		t.Errorf("restored item is not live: %v", err)
+	}
+
+	purgeBody, _ := json.Marshal(map[string]any{"action": "purge", "ids": []string{items[1].ID}})
+	rec = apiRequest(t, srv, cookie, http.MethodPost, "/api/admin/items/batch", string(purgeBody))
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"applied":1`) {
+		t.Fatalf("batch purge status/body = %d %s", rec.Code, rec.Body.String())
+	}
+	if _, err := srv.Store.ItemByIDIncludingDeleted(ctx, items[1].ID); err == nil {
+		t.Error("batch-purged item still exists")
+	}
+}
+
+func TestAdminBatchItemsRejectsNonAdmin(t *testing.T) {
+	srv, _, _ := mediaTestServer(t)
+	cookie := authenticate(t, srv, "aiden")
+	body := `{"action":"restore","ids":["anything"]}`
+	rec := apiRequest(t, srv, cookie, http.MethodPost, "/api/admin/items/batch", body)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("non-admin batch status = %d, want 403", rec.Code)
+	}
+}
 
 func TestRetryJobRequeuesAFailedJob(t *testing.T) {
 	ctx := context.Background()

@@ -245,6 +245,33 @@ printf '\377\330\377' > "$last"`,
 	}
 }
 
+func TestGenerateSocialAnimationUsesH264MP4(t *testing.T) {
+	ctx := context.Background()
+	store, _, _, cfg := newMediaStore(t)
+	argsFile := cfg.TmpDir() + "/animation-ffmpeg-args.txt"
+	media.StubTools(t, map[string]string{
+		"ffmpeg": `#!/bin/sh
+echo "$@" >> "` + argsFile + `"
+for last in "$@"; do :; done
+printf 'mp4' > "$last"`,
+	})
+
+	dst := cfg.TmpDir() + "/social.mp4"
+	if err := store.GenerateSocialAnimation(ctx, "/src.gif", dst); err != nil {
+		t.Fatalf("GenerateSocialAnimation: %v", err)
+	}
+	recorded, err := os.ReadFile(argsFile)
+	if err != nil {
+		t.Fatalf("ffmpeg was not invoked: %v", err)
+	}
+	args := string(recorded)
+	for _, want := range []string{"libx264", "yuv420p", "+faststart", "-f mp4", "min(1280,iw)"} {
+		if !strings.Contains(args, want) {
+			t.Errorf("social animation args are missing %q\ngot: %s", want, args)
+		}
+	}
+}
+
 // TestHandleThumbnailJobWritesAPosterForAGif pins down the diagnosis behind
 // the "GIF previews are broken" report: nothing in this pipeline is actually
 // broken. IsVideoMime("image/gif") is false, so HandleThumbnailJob routes a

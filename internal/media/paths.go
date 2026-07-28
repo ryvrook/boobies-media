@@ -56,6 +56,12 @@ func SocialPreviewPath(thumbsDir, hash string) string {
 	return filepath.Join(shardDir(thumbsDir, hash), hash+"_social.jpg")
 }
 
+// SocialAnimationPath is the H.264 MP4 rendition used to embed an animated
+// GIF on social platforms that support Open Graph video.
+func SocialAnimationPath(thumbsDir, hash string) string {
+	return filepath.Join(shardDir(thumbsDir, hash), hash+"_social.mp4")
+}
+
 // maxFilenameLength caps the name echoed in Content-Disposition.
 const maxFilenameLength = 120
 

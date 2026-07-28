@@ -32,6 +32,7 @@ export function mountBulkSelect(root: HTMLElement): void {
   const moveBtn = root.querySelector<HTMLButtonElement>('[data-action="bulk-move"]');
   const tagBtn = root.querySelector<HTMLButtonElement>('[data-action="bulk-tag"]');
   const deleteBtn = root.querySelector<HTMLButtonElement>('[data-action="bulk-delete"]');
+  const selectAllBtn = root.querySelector<HTMLButtonElement>('[data-action="select-all-loaded"]');
   const grid = document.querySelector<HTMLElement>('[data-island="grid"]');
   if (!toggle || !count || !moveBtn || !tagBtn || !deleteBtn || !grid) return;
 
@@ -72,6 +73,16 @@ export function mountBulkSelect(root: HTMLElement): void {
     document.body.classList.toggle("selecting", selecting);
     if (!selecting) exitSelectMode();
     else stopActivePreview(); // a preview mid-hover should not keep playing under the checkboxes
+  });
+
+  selectAllBtn?.addEventListener("click", () => {
+    const tiles = Array.from(grid.querySelectorAll<HTMLElement>('[data-role="tile"][data-item-id]'));
+    const allSelected = tiles.length > 0 && tiles.every((tile) => selected.has(tile.dataset.itemId ?? ""));
+    for (const tile of tiles) {
+      const id = tile.dataset.itemId;
+      if (id) setSelected(id, !allSelected);
+    }
+    refresh();
   });
 
   // Delegated so tiles grid.ts appends later (infinite scroll) work with no

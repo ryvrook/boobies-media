@@ -120,7 +120,7 @@ func TestEmbedWebmFallsBackToImageCard(t *testing.T) {
 	}
 }
 
-func TestEmbedGIFFallsBackToJPEGCard(t *testing.T) {
+func TestEmbedGIFAdvertisesMP4AnimationAndJPEGPoster(t *testing.T) {
 	ctx := context.Background()
 	srv, mediaStore, _ := mediaTestServer(t)
 	srv.Cfg.BaseURL = "https://media.example.com"
@@ -131,19 +131,17 @@ func TestEmbedGIFFallsBackToJPEGCard(t *testing.T) {
 
 	body := embedBody(t, srv, item.ID).Body.String()
 	for _, tag := range []string{
+		`<meta property="og:type" content="video.other">`,
+		`<meta property="og:video" content="https://media.example.com/g/` + item.ID + `.mp4">`,
+		`<meta property="og:video:secure_url" content="https://media.example.com/g/` + item.ID + `.mp4">`,
+		`<meta property="og:video:type" content="video/mp4">`,
 		`<meta property="og:image" content="https://media.example.com/p/` + item.ID + `">`,
 		`<meta property="og:image:type" content="image/jpeg">`,
 		`<meta name="twitter:image" content="https://media.example.com/p/` + item.ID + `">`,
 	} {
 		if !strings.Contains(body, tag) {
-			t.Errorf("GIF embed is missing crawler-compatible tag:\n%s", tag)
+			t.Errorf("GIF embed is missing animated social tag:\n%s", tag)
 		}
-	}
-	if strings.Contains(body, `<meta property="og:image" content="https://media.example.com/m/`+item.ID+`">`) {
-		t.Error("GIF embed points crawlers at the full animated GIF instead of its bounded JPEG poster")
-	}
-	if strings.Contains(body, `property="og:image:width"`) || strings.Contains(body, `property="og:image:height"`) {
-		t.Error("GIF poster declared the original animation dimensions")
 	}
 }
 

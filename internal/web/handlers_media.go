@@ -98,6 +98,40 @@ func (s *Server) handleSocialPreview(w http.ResponseWriter, r *http.Request) {
 	s.serveFile(w, r, dst, "image/jpeg", filename)
 }
 
+// handleSocialAnimation serves a cached H.264 rendition of a GIF for inline
+// social embeds. Non-GIF items are rejected so this cannot become a public
+// general-purpose transcoder.
+func (s *Server) handleSocialAnimation(w http.ResponseWriter, r *http.Request) {
+	if !s.checkPublicRateLimit(w, r) {
+		return
+	}
+	item, ok := s.publicItem(w, r)
+	if !ok {
+		return
+	}
+	if !media.IsGifMime(item.Mime) {
+		http.NotFound(w, r)
+		return
+	}
+	if s.Media == nil {
+		http.Error(w, "media storage is not configured", http.StatusServiceUnavailable)
+		return
+	}
+	dst := media.SocialAnimationPath(s.Cfg.ThumbsDir(), item.ContentHash)
+	if _, err := os.Stat(dst); os.IsNotExist(err) {
+		src := media.BlobPath(s.Cfg.FilesDir(), item.ContentHash)
+		if err := s.Media.GenerateSocialAnimation(r.Context(), src, dst); err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+	} else if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	filename := media.SanitizeFilename(item.Title + ".mp4")
+	s.serveFile(w, r, dst, "video/mp4", filename)
+}
+
 // checkPublicRateLimit enforces the public-route rate limit. It must be
 // called first, before any other per-request work (including query
 // validation), so that every request against /m/ and /t/ spends budget

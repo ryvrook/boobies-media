@@ -1314,6 +1314,20 @@ body.dragging .uploader { pointer-events: auto; }
 .admin__tests { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
 .admin__testresult { font-size: 12px; color: var(--muted); }
 .admin__testresult[hidden] { display: none; }
+.admin__section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 24px;
+}
+.admin__section-head h2 { margin: 0 auto 0 0; }
+.admin__section-head [data-role="trash-selection"] {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.admin__section-head button { min-height: 34px; }
+.admin__section-head button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .admin__field-err { display: block; margin-top: 4px; }
 

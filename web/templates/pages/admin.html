@@ -91,12 +91,18 @@
     </tbody>
   </table>
 
-  <h2>Trash</h2>
-  <table class="admin__table">
-    <thead><tr><th>Title</th><th>Item</th><th>Actions</th></tr></thead>
+  <div class="admin__section-head">
+    <h2>Trash</h2>
+    <span data-role="trash-selection">0 selected</span>
+    <button type="button" data-action="bulk-restore-trash" disabled>Restore selected</button>
+    <button type="button" data-action="bulk-purge-trash" class="danger" disabled>Purge selected</button>
+  </div>
+  <table class="admin__table" data-role="trash-table">
+    <thead><tr><th><input type="checkbox" data-action="select-all-trash" aria-label="Select all trash items"></th><th>Title</th><th>Item</th><th>Actions</th></tr></thead>
     <tbody>
       {{range $data.Trash}}
       <tr data-item-id="{{.id}}">
+        <td><input type="checkbox" data-action="select-trash" aria-label="Select {{.title}}"></td>
         <td>{{.title}}</td>
         <td><a href="/s/{{.id}}" target="_blank" rel="noopener">{{.id}}</a></td>
         <td class="admin__actions">

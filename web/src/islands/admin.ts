@@ -11,6 +11,12 @@
 import { bindCopyButton } from "./copy";
 import { notify, notifyAfterReload } from "../notify";
 
+interface AdminBatchResult {
+  applied: number;
+  ok: string[];
+  failed: { id: string; error: string }[];
+}
+
 /** Tiny element-builder to keep the dialog-construction code below terse. */
 export function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -144,6 +150,89 @@ export function mountAdmin(root: HTMLElement): void {
   // The purge confirmation. Disabled until the admin types "purge", so
   // purging can never be one accidental click next to Restore.
   const purgeModal = buildModal("Confirm purge");
+  const trashTable = root.querySelector<HTMLElement>('[data-role="trash-table"]');
+  const trashSelection = root.querySelector<HTMLElement>('[data-role="trash-selection"]');
+  const bulkRestore = root.querySelector<HTMLButtonElement>('[data-action="bulk-restore-trash"]');
+  const bulkPurge = root.querySelector<HTMLButtonElement>('[data-action="bulk-purge-trash"]');
+  const selectAllTrash = root.querySelector<HTMLInputElement>('[data-action="select-all-trash"]');
+  const selectedTrash = new Set<string>();
+
+  function refreshTrashSelection(): void {
+    const count = selectedTrash.size;
+    if (trashSelection) trashSelection.textContent = `${count} selected`;
+    if (bulkRestore) bulkRestore.disabled = count === 0;
+    if (bulkPurge) bulkPurge.disabled = count === 0;
+    if (selectAllTrash && trashTable) {
+      const total = trashTable.querySelectorAll('[data-action="select-trash"]').length;
+      selectAllTrash.checked = total > 0 && count === total;
+      selectAllTrash.indeterminate = count > 0 && count < total;
+    }
+  }
+
+  trashTable?.addEventListener("change", (event) => {
+    const checkbox = (event.target as HTMLElement | null)?.closest<HTMLInputElement>('[data-action="select-trash"]');
+    if (!checkbox) return;
+    const id = checkbox.closest<HTMLElement>("[data-item-id]")?.dataset.itemId;
+    if (!id) return;
+    if (checkbox.checked) selectedTrash.add(id);
+    else selectedTrash.delete(id);
+    refreshTrashSelection();
+  });
+
+  selectAllTrash?.addEventListener("change", () => {
+    for (const checkbox of trashTable?.querySelectorAll<HTMLInputElement>('[data-action="select-trash"]') ?? []) {
+      checkbox.checked = selectAllTrash.checked;
+      const id = checkbox.closest<HTMLElement>("[data-item-id]")?.dataset.itemId;
+      if (!id) continue;
+      if (checkbox.checked) selectedTrash.add(id);
+      else selectedTrash.delete(id);
+    }
+    refreshTrashSelection();
+  });
+
+  async function applyTrashBatch(action: "restore" | "purge", ids: string[]): Promise<void> {
+    const response = await send("/api/admin/items/batch", "POST", { action, ids });
+    if (!response.ok) {
+      notify(await failMessage(response), "error");
+      return;
+    }
+    const result = (await response.json()) as AdminBatchResult;
+    const verb = action === "restore" ? "restored" : "permanently deleted";
+    const message =
+      result.failed.length === 0
+        ? `${result.applied} item${result.applied === 1 ? "" : "s"} ${verb}.`
+        : `${result.applied} ${verb}; ${result.failed.length} could not be updated.`;
+    notifyAfterReload(message, result.failed.length === 0 ? "success" : "info");
+    window.location.reload();
+  }
+
+  function confirmBulkPurge(ids: string[]): void {
+    purgeModal.body.replaceChildren();
+    const phrase = `purge ${ids.length}`;
+    const text = el("p", "modal__text", `Permanently delete ${ids.length} selected item${ids.length === 1 ? "" : "s"}? This cannot be undone.`);
+    const field = el("label", "modal__field");
+    const input = el("input", "modal__input");
+    input.type = "text";
+    input.placeholder = phrase;
+    field.append(el("span", undefined, `Type “${phrase}” to confirm`), input);
+    const actions = el("div", "modal__actions");
+    const cancel = el("button", "btn btn--quiet", "Cancel");
+    cancel.type = "button";
+    cancel.dataset.action = "close";
+    const purge = el("button", "btn btn--danger", "Purge selected");
+    purge.type = "button";
+    purge.disabled = true;
+    input.addEventListener("input", () => {
+      purge.disabled = input.value.trim().toLowerCase() !== phrase;
+    });
+    purge.addEventListener("click", () => {
+      purgeModal.close();
+      void applyTrashBatch("purge", ids);
+    });
+    actions.append(cancel, purge);
+    purgeModal.body.append(text, field, actions);
+    purgeModal.open(input);
+  }
 
   function confirmPurge(id: string, title: string): void {
     purgeModal.body.replaceChildren();
@@ -244,11 +333,23 @@ export function mountAdmin(root: HTMLElement): void {
           confirmPurge(id, title);
         }
         break;
+      case "bulk-restore-trash": {
+        const ids = Array.from(selectedTrash);
+        if (ids.length > 0) void applyTrashBatch("restore", ids);
+        break;
+      }
+      case "bulk-purge-trash": {
+        const ids = Array.from(selectedTrash);
+        if (ids.length > 0) confirmBulkPurge(ids);
+        break;
+      }
       case "test-ingest":
         void testIngest(button.dataset.extractor ?? "");
         break;
     }
   });
+
+  refreshTrashSelection();
 
   const testResult = root.querySelector<HTMLElement>('[data-role="test-result"]');
   async function testIngest(extractor: string): Promise<void> {

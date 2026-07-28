@@ -364,10 +364,32 @@ func TestMalformedThumbnailSizeStillConsumesRateBudget(t *testing.T) {
 
 func TestMediaRoutesRequireNoAuthentication(t *testing.T) {
 	// The gate must let these through; that is the whole point of a share link.
-	for _, path := range []string{"/m/abc12345", "/t/abc12345"} {
+	for _, path := range []string{"/m/abc12345", "/t/abc12345", "/p/abc12345", "/g/abc12345.mp4"} {
 		if !IsPublicPath(path) {
 			t.Errorf("IsPublicPath(%q) = false; share links would need a login", path)
 		}
+	}
+}
+
+func TestSocialAnimationRouteGeneratesAndServesGIFAsMP4(t *testing.T) {
+	srv, mediaStore, _ := mediaTestServer(t)
+	item := storeBlob(t, srv, mediaStore, gifTestBytes, "party.gif")
+	media.StubTools(t, map[string]string{
+		"ffmpeg": `#!/bin/sh
+for last in "$@"; do :; done
+printf 'social-mp4' > "$last"`,
+	})
+
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/g/"+item.ID+".mp4", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Content-Type"); got != "video/mp4" {
+		t.Errorf("Content-Type = %q, want video/mp4", got)
+	}
+	if rec.Body.String() != "social-mp4" {
+		t.Errorf("body = %q, want generated MP4 bytes", rec.Body.String())
 	}
 }
 

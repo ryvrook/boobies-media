@@ -13,7 +13,8 @@ type embedData struct {
 	Title            string
 	ShareURL         string
 	MediaURL         string
-	SecureMediaURL   string
+	EmbedMediaURL    string
+	EmbedMime        string
 	PosterURL        string
 	SocialPreviewURL string
 	OGImage          string
@@ -32,7 +33,8 @@ type embedData struct {
 	// reject the card over.
 	OGImageDimensionsKnown bool
 	IsVideo                bool
-	IsVideoEmbed           bool // an mp4 that gets full video OG tags
+	IsVideoEmbed           bool // an MP4 original or GIF rendition with video OG tags
+	EmbedDimensionsKnown   bool
 	SourceURL              string
 	UploaderName           string
 	UploaderInitial        string
@@ -76,7 +78,8 @@ func (s *Server) handleEmbed(w http.ResponseWriter, r *http.Request) {
 		Title:            item.Title,
 		ShareURL:         base + "/s/" + item.ID,
 		MediaURL:         base + "/m/" + item.ID,
-		SecureMediaURL:   secure + "/m/" + item.ID,
+		EmbedMediaURL:    secure + "/m/" + item.ID,
+		EmbedMime:        item.Mime,
 		PosterURL:        base + "/t/" + item.ID + "?s=1024",
 		SocialPreviewURL: base + "/p/" + item.ID,
 		Mime:             item.Mime,
@@ -87,15 +90,20 @@ func (s *Server) handleEmbed(w http.ResponseWriter, r *http.Request) {
 		UploaderName:     uploaderName,
 		UploaderInitial:  initial,
 	}
-	// Only H.264 MP4 gets a video card; everything else (webm, images) gets an
-	// image card. yt-dlp downloads are constrained to mp4, so this is the norm.
+	// H.264 MP4 originals and the H.264 rendition of a GIF get inline video
+	// cards. Other formats fall back to an image card.
 	if item.Mime == "video/mp4" {
 		data.IsVideoEmbed = true
+		data.EmbedDimensionsKnown = data.Width > 0 && data.Height > 0
+	} else if media.IsGifMime(item.Mime) {
+		data.IsVideoEmbed = true
+		data.EmbedMediaURL = secure + "/g/" + item.ID + ".mp4"
+		data.EmbedMime = "video/mp4"
 	} else {
 		data.OGImageType = item.Mime
 		data.OGImage = data.MediaURL
 		data.OGImageDimensionsKnown = data.Width > 0 && data.Height > 0
-		if data.IsVideo || media.IsGifMime(item.Mime) {
+		if data.IsVideo {
 			// A non-mp4 video cannot be an og:image; use its poster
 			// thumbnail instead. That thumbnail is box-fit into 1024x1024
 			// preserving aspect ratio (see media.GenerateThumbnail), so it is

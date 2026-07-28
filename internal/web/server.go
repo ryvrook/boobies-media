@@ -136,6 +136,7 @@ func New(cfg *config.Config, store *db.Store, depStatus []deps.Status, opts ...O
 	r.Get("/m/{id}", s.handleRawMedia)
 	r.Get("/t/{id}", s.handleThumbnail)
 	r.Get("/p/{id}", s.handleSocialPreview)
+	r.Get("/g/{id}.mp4", s.handleSocialAnimation)
 	r.Get("/s/{id}", s.handleEmbed)
 	r.Post("/api/ingest", s.handleIngest)
 	r.Post("/api/uploads", s.handleUploadInit)
@@ -171,6 +172,7 @@ func New(cfg *config.Config, store *db.Store, depStatus []deps.Status, opts ...O
 	r.With(s.requireAdmin).Post("/api/jobs/{id}/retry", s.handleRetryJob)
 	r.With(s.requireAdmin).Post("/api/admin/items/{id}/restore", s.handleRestoreItem)
 	r.With(s.requireAdmin).Delete("/api/admin/items/{id}/purge", s.handlePurgeItem)
+	r.With(s.requireAdmin).Post("/api/admin/items/batch", s.handleAdminBatchItems)
 
 	s.router = r
 	return s, nil
