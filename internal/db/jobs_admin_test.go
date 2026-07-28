@@ -32,6 +32,33 @@ func TestListJobsIsNewestFirst(t *testing.T) {
 	}
 }
 
+func TestListJobsPageAndCount(t *testing.T) {
+	ctx := context.Background()
+	store := dbtest.New(t)
+	for i := 0; i < 25; i++ {
+		if _, err := store.EnqueueJob(ctx, "probe", []byte(`{}`), adminJobEpoch.Add(time.Duration(i)*time.Minute)); err != nil {
+			t.Fatalf("EnqueueJob: %v", err)
+		}
+	}
+	count, err := store.CountJobs(ctx)
+	if err != nil {
+		t.Fatalf("CountJobs: %v", err)
+	}
+	if count != 25 {
+		t.Fatalf("CountJobs = %d, want 25", count)
+	}
+	page, err := store.ListJobsPage(ctx, 20, 20)
+	if err != nil {
+		t.Fatalf("ListJobsPage: %v", err)
+	}
+	if len(page) != 5 {
+		t.Fatalf("second page has %d jobs, want 5", len(page))
+	}
+	if page[0].ID != 5 || page[4].ID != 1 {
+		t.Errorf("second page IDs = %d...%d, want 5...1", page[0].ID, page[4].ID)
+	}
+}
+
 func TestRequeueJobResetsAFailedJob(t *testing.T) {
 	ctx := context.Background()
 	store := dbtest.New(t)

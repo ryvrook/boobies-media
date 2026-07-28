@@ -113,6 +113,51 @@ export function mountGrid(root: HTMLElement): void {
     { rootMargin: "600px" },
   );
   observer.observe(sentinel);
+
+  // Keep the visible first page current while background jobs finish or
+  // friends add media. This is intentionally a small newest-page request,
+  // not a reset of infinite-scroll state, so the user's scroll position and
+  // already-loaded history stay intact.
+  async function refreshVisibleItems(): Promise<void> {
+    if (document.hidden || loading) return;
+    const params = new URLSearchParams({ sort, limit: "24" });
+    if (folder) params.set("folder", folder);
+    if (tag) params.set("tag", tag);
+    if (uploader) params.set("uploader", uploader);
+    if (q) params.set("q", q);
+    try {
+      const response = await fetch(`/api/items?${params.toString()}`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) return;
+      const page = (await response.json()) as ItemsPage;
+      let added = 0;
+      for (const item of [...page.items].reverse()) {
+        const existing = root.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(item.id)}"]`);
+        if (existing) {
+          if (item.ready && existing.classList.contains("tile--processing")) {
+            existing.replaceWith(renderTile(item));
+          }
+          continue;
+        }
+        root.prepend(renderTile(item));
+        added++;
+      }
+      if (added > 0) {
+        root.querySelector('[data-role="empty"]')?.remove();
+        loaded += added;
+        updateCount();
+      }
+    } catch {
+      // A transient refresh failure should not disturb the working library.
+    }
+  }
+
+  const refreshTimer = window.setInterval(() => void refreshVisibleItems(), 5000);
+  window.addEventListener("pagehide", () => window.clearInterval(refreshTimer), { once: true });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) void refreshVisibleItems();
+  });
 }
 
 function mountGridSizeControl(): void {

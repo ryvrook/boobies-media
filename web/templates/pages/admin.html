@@ -74,22 +74,42 @@
   </div>
   <p class="admin__testresult" data-role="test-result" hidden></p>
 
-  <h2>Job queue</h2>
-  <table class="admin__table">
-    <thead><tr><th>ID</th><th>Type</th><th>Status</th><th>Attempts</th><th>Error</th><th></th></tr></thead>
-    <tbody>
-      {{range $data.Jobs}}
-      <tr data-job-id="{{.ID}}">
-        <td>{{.ID}}</td>
-        <td>{{.Type}}</td>
-        <td>{{.Status}}</td>
-        <td>{{.Attempts}}</td>
-        <td class="admin__err">{{.Error}}</td>
-        <td>{{if eq .Status "failed"}}<button type="button" data-action="retry-job">Retry</button>{{end}}</td>
-      </tr>
+  <section data-role="job-queue">
+    <div class="admin__section-head" id="job-queue">
+      <h2>Job queue</h2>
+      <span>Page {{$data.JobPage}} of {{$data.JobPages}}</span>
+    </div>
+    <table class="admin__table">
+      <thead><tr><th>ID</th><th>Type</th><th>Status</th><th>Attempts</th><th>Error</th><th></th></tr></thead>
+      <tbody>
+        {{range $data.Jobs}}
+        <tr data-job-id="{{.ID}}">
+          <td>{{.ID}}</td>
+          <td>{{.Type}}</td>
+          <td>{{.Status}}</td>
+          <td>{{.Attempts}}</td>
+          <td class="admin__err">{{.Error}}</td>
+          <td>{{if eq .Status "failed"}}<button type="button" data-action="retry-job">Retry</button>{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+    {{if gt $data.JobPages 1}}
+    <nav class="admin__pager" aria-label="Job queue pages">
+      {{if gt $data.JobPage 1}}
+      <a class="button" href="/admin?job_page={{$data.JobPrev}}#job-queue" rel="prev">Previous</a>
+      {{else}}
+      <span class="button is-disabled" aria-disabled="true">Previous</span>
       {{end}}
-    </tbody>
-  </table>
+      <span>{{$data.JobPage}} / {{$data.JobPages}}</span>
+      {{if lt $data.JobPage $data.JobPages}}
+      <a class="button" href="/admin?job_page={{$data.JobNext}}#job-queue" rel="next">Next</a>
+      {{else}}
+      <span class="button is-disabled" aria-disabled="true">Next</span>
+      {{end}}
+    </nav>
+    {{end}}
+  </section>
 
   <div class="admin__section-head">
     <h2>Trash</h2>

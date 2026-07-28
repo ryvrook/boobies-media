@@ -103,6 +103,31 @@ func TestBrowsePageShowsDisplayName(t *testing.T) {
 	}
 }
 
+func TestBrowsePageShowsCenteredStorageMeter(t *testing.T) {
+	r, err := NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer: %v", err)
+	}
+	out, err := r.RenderString("browse", PageData{
+		User:    &db.User{Username: "aiden", DisplayName: "Aiden"},
+		Storage: &StorageUsage{UsedBytes: 1000, CapacityBytes: 4000, Percent: 25},
+	})
+	if err != nil {
+		t.Fatalf("RenderString: %v", err)
+	}
+	for _, want := range []string{
+		`class="topbar__storage"`,
+		`role="progressbar"`,
+		`aria-valuenow="25"`,
+		`style="width:25%"`,
+		`1 KB / 4 KB`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("storage meter is missing %q", want)
+		}
+	}
+}
+
 func TestRenderEscapesUserContent(t *testing.T) {
 	r, err := NewRenderer()
 	if err != nil {

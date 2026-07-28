@@ -2,5 +2,3 @@
 /data/
 /web/static/dist/
 node_modules/
-.claude/worktrees/
-.superpowers/

@@ -137,6 +137,7 @@ func New(cfg *config.Config, store *db.Store, depStatus []deps.Status, opts ...O
 	r.Get("/t/{id}", s.handleThumbnail)
 	r.Get("/p/{id}", s.handleSocialPreview)
 	r.Get("/g/{id}.mp4", s.handleSocialAnimation)
+	r.Get("/v/{id}.mp4", s.handleSocialVideo)
 	r.Get("/s/{id}", s.handleEmbed)
 	r.Post("/api/ingest", s.handleIngest)
 	r.Post("/api/uploads", s.handleUploadInit)

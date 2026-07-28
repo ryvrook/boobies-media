@@ -75,7 +75,7 @@ func TestEmbedVideoHasVideoAndPosterTags(t *testing.T) {
 	body := embedBody(t, srv, item.ID).Body.String()
 	want := []string{
 		`<meta property="og:type" content="video.other">`,
-		`<meta property="og:video:secure_url" content="https://media.example.com/m/` + item.ID + `">`,
+		`<meta property="og:video:secure_url" content="https://media.example.com/v/` + item.ID + `.mp4">`,
 		`<meta property="og:video:type" content="video/mp4">`,
 		`<meta property="og:video:width" content="1280">`,
 		`<meta property="og:video:height" content="720">`,
@@ -91,7 +91,7 @@ func TestEmbedVideoHasVideoAndPosterTags(t *testing.T) {
 	}
 }
 
-func TestEmbedWebmFallsBackToImageCard(t *testing.T) {
+func TestEmbedWebmUsesCompatibleVideoRendition(t *testing.T) {
 	ctx := context.Background()
 	srv, mediaStore, _ := mediaTestServer(t)
 	srv.Cfg.BaseURL = "https://media.example.com"
@@ -109,14 +109,14 @@ func TestEmbedWebmFallsBackToImageCard(t *testing.T) {
 		t.Fatalf("SetItemProbe: %v", err)
 	}
 	body := embedBody(t, srv, item.ID).Body.String()
-	if strings.Contains(body, "og:video") {
-		t.Error("a webm item emitted og:video tags; it must fall back to an image card")
-	}
-	if !strings.Contains(body, `<meta property="og:image" content="https://media.example.com/p/`+item.ID+`">`) {
-		t.Error("the webm fallback did not emit a poster og:image")
-	}
-	if strings.Contains(body, `property="og:image:width"`) || strings.Contains(body, `property="og:image:height"`) {
-		t.Error("the webm fallback declared a poster width/height; the poster is a box-fit thumbnail whose actual size differs from the probed source dimensions, so no dimension claim may be made for it")
+	for _, want := range []string{
+		`<meta property="og:video" content="https://media.example.com/v/` + item.ID + `.mp4">`,
+		`<meta property="og:video:type" content="video/mp4">`,
+		`<video src="https://media.example.com/v/` + item.ID + `.mp4"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("webm embed is missing compatible rendition tag %q", want)
+		}
 	}
 }
 

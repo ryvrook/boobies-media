@@ -37,7 +37,20 @@
       <span>boobies&middot;media</span>
     </a>
   </div>
-  <div class="topbar__spacer"></div>
+  {{if .Storage}}
+  <div class="topbar__storage"
+       role="progressbar" aria-label="Media storage used"
+       aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{.Storage.Percent}}"
+       title="{{fmtBytes .Storage.UsedBytes}} of {{fmtBytes .Storage.CapacityBytes}} available media capacity used">
+    <div class="topbar__storage-label">
+      <span>Media storage</span>
+      <span>{{fmtBytes .Storage.UsedBytes}} / {{fmtBytes .Storage.CapacityBytes}}</span>
+    </div>
+    <span class="topbar__storage-track"><span style="width:{{.Storage.Percent}}%"></span></span>
+  </div>
+  {{else}}
+  <div></div>
+  {{end}}
   <div class="topbar__user">
     <span>{{.User.DisplayName}}</span>
     {{if .User.IsAdmin}}<a href="/admin" class="topbar__admin">Admin</a>{{end}}

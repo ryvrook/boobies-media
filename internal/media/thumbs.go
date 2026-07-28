@@ -170,3 +170,55 @@ func (s *Store) GenerateSocialAnimation(ctx context.Context, srcPath, dstPath st
 	}
 	return nil
 }
+
+// GenerateSocialVideo produces the conservative H.264/AAC MP4 expected by
+// browsers and social-card players, regardless of the original container's
+// codecs.
+func (s *Store) GenerateSocialVideo(ctx context.Context, srcPath, dstPath string) error {
+	if _, err := os.Stat(dstPath); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(dstPath), 0o750); err != nil {
+		return fmt.Errorf("media: create social video directory: %w", err)
+	}
+	tmp, err := os.CreateTemp(filepath.Dir(dstPath), ".embed-*.mp4")
+	if err != nil {
+		return fmt.Errorf("media: create social video: %w", err)
+	}
+	tmpPath := tmp.Name()
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return err
+	}
+	defer os.Remove(tmpPath)
+
+	args := []string{
+		"-v", "error", "-y",
+		"-i", srcPath,
+		"-map", "0:v:0",
+		"-map", "0:a?",
+		"-vf", "scale='min(1920,iw)':'min(1080,ih)':force_original_aspect_ratio=decrease:flags=lanczos,pad=ceil(iw/2)*2:ceil(ih/2)*2",
+		"-c:v", "libx264",
+		"-preset", "fast",
+		"-crf", "23",
+		"-pix_fmt", "yuv420p",
+		"-c:a", "aac",
+		"-b:a", "128k",
+		"-movflags", "+faststart",
+		"-f", "mp4",
+		tmpPath,
+	}
+	if _, err := s.Runner.Run(ctx, "ffmpeg", args...); err != nil {
+		return err
+	}
+	info, err := os.Stat(tmpPath)
+	if err != nil || info.Size() == 0 {
+		return fmt.Errorf("media: ffmpeg wrote no social video")
+	}
+	if err := os.Rename(tmpPath, dstPath); err != nil {
+		return fmt.Errorf("media: place social video: %w", err)
+	}
+	return nil
+}

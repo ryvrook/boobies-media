@@ -62,6 +62,14 @@ func SocialAnimationPath(thumbsDir, hash string) string {
 	return filepath.Join(shardDir(thumbsDir, hash), hash+"_social.mp4")
 }
 
+// SocialVideoPath is a browser/social-compatible H.264/AAC rendition. The
+// original remains untouched; this derivative exists because an MP4
+// container can still carry AV1, HEVC, or another codec that embed players
+// do not support.
+func SocialVideoPath(thumbsDir, hash string) string {
+	return filepath.Join(shardDir(thumbsDir, hash), hash+"_embed.mp4")
+}
+
 // maxFilenameLength caps the name echoed in Content-Disposition.
 const maxFilenameLength = 120
 

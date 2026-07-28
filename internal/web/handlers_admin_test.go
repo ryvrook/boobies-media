@@ -63,6 +63,34 @@ func TestAdminPageRendersForAdmin(t *testing.T) {
 	}
 }
 
+func TestAdminJobQueueIsPaginated(t *testing.T) {
+	srv, _, _ := mediaTestServer(t)
+	cookie := adminCookie(t, srv, "aiden")
+	for i := 0; i < 25; i++ {
+		if _, err := srv.Store.EnqueueJob(context.Background(), "probe", []byte(`{}`), srv.Now()); err != nil {
+			t.Fatalf("EnqueueJob: %v", err)
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/admin?job_page=2", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("admin /admin status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "Page 2 of 2") {
+		t.Error("admin queue does not show its current page")
+	}
+	if !strings.Contains(body, `href="/admin?job_page=1#job-queue"`) {
+		t.Error("admin queue does not link back to the previous page")
+	}
+	if got := strings.Count(body, `data-job-id="`); got != 5 {
+		t.Errorf("second queue page rendered %d jobs, want 5", got)
+	}
+}
+
 func TestAdminPageTestIngestButtonsAreEnabled(t *testing.T) {
 	srv, _, _ := mediaTestServer(t)
 	cookie := adminCookie(t, srv, "aiden")

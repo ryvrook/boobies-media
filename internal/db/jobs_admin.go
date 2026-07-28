@@ -14,12 +14,20 @@ var ErrJobNotFailed = errors.New("db: job is not in the failed state")
 
 // ListJobs returns recent jobs newest-first for the admin queue view.
 func (s *Store) ListJobs(ctx context.Context, limit int) ([]*Job, error) {
+	return s.ListJobsPage(ctx, limit, 0)
+}
+
+// ListJobsPage returns one newest-first page for the admin queue view.
+func (s *Store) ListJobsPage(ctx context.Context, limit, offset int) ([]*Job, error) {
 	if limit <= 0 || limit > 200 {
 		limit = 100
 	}
+	if offset < 0 {
+		offset = 0
+	}
 	rows, err := s.DB.QueryContext(ctx,
 		`SELECT id, type, payload, status, attempts, error, next_attempt_at, created_at
-		 FROM jobs ORDER BY created_at DESC, id DESC LIMIT ?`, limit)
+		 FROM jobs ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("db: list jobs: %w", err)
 	}
@@ -50,6 +58,15 @@ func (s *Store) ListJobs(ctx context.Context, limit int) ([]*Job, error) {
 		jobs = append(jobs, &job)
 	}
 	return jobs, rows.Err()
+}
+
+// CountJobs returns the total job queue and history size.
+func (s *Store) CountJobs(ctx context.Context) (int, error) {
+	var count int
+	if err := s.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM jobs`).Scan(&count); err != nil {
+		return 0, fmt.Errorf("db: count jobs: %w", err)
+	}
+	return count, nil
 }
 
 // RequeueJob resets a failed job for a fresh set of attempts. It is the admin

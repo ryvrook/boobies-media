@@ -90,9 +90,14 @@ func (s *Server) handleEmbed(w http.ResponseWriter, r *http.Request) {
 		UploaderName:     uploaderName,
 		UploaderInitial:  initial,
 	}
+	if data.IsVideo {
+		data.MediaURL = base + "/v/" + item.ID + ".mp4"
+		data.EmbedMediaURL = secure + "/v/" + item.ID + ".mp4"
+		data.EmbedMime = "video/mp4"
+	}
 	// H.264 MP4 originals and the H.264 rendition of a GIF get inline video
 	// cards. Other formats fall back to an image card.
-	if item.Mime == "video/mp4" {
+	if data.IsVideo {
 		data.IsVideoEmbed = true
 		data.EmbedDimensionsKnown = data.Width > 0 && data.Height > 0
 	} else if media.IsGifMime(item.Mime) {

@@ -146,6 +146,7 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	data := PageData{
 		Title:   "Browse",
 		SiteURL: strings.TrimRight(s.Cfg.BaseURL, "/"),
+		Storage: s.storageUsage(r.Context()),
 		User:    user,
 		Data: browseData{
 			Items:      payload,

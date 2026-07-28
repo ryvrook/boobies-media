@@ -126,6 +126,33 @@ export function mountAdmin(root: HTMLElement): void {
     }
   }
 
+  // Jobs move through queued/running/done asynchronously. Refresh only that
+  // section so status changes and newly-created jobs appear without losing
+  // form input, scroll position, or open dialogs elsewhere on the page.
+  let refreshingJobs = false;
+  async function refreshJobs(): Promise<void> {
+    if (refreshingJobs || document.hidden) return;
+    const current = root.querySelector<HTMLElement>('[data-role="job-queue"]');
+    if (!current) return;
+    refreshingJobs = true;
+    try {
+      const response = await fetch(window.location.href, { headers: { Accept: "text/html" } });
+      if (!response.ok) return;
+      const parsed = new DOMParser().parseFromString(await response.text(), "text/html");
+      const fresh = parsed.querySelector<HTMLElement>('[data-role="job-queue"]');
+      if (fresh) current.replaceWith(fresh);
+    } catch {
+      // Keep the last known queue visible through temporary network trouble.
+    } finally {
+      refreshingJobs = false;
+    }
+  }
+  const jobsTimer = window.setInterval(() => void refreshJobs(), 4000);
+  window.addEventListener("pagehide", () => window.clearInterval(jobsTimer), { once: true });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) void refreshJobs();
+  });
+
   // The one-time API key reveal. Body content is cleared on every close path
   // (backdrop, Escape, the close button) so the plaintext key never lingers
   // in the DOM once the admin has dismissed it; it is never re-fetched or

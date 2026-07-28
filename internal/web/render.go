@@ -3,6 +3,7 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -13,6 +14,7 @@ import (
 	webassets "boobies-media/web"
 
 	"boobies-media/internal/db"
+	"boobies-media/internal/ingest"
 )
 
 // PageData is the value every page template receives. The base layout reads
@@ -20,10 +22,39 @@ import (
 type PageData struct {
 	Title   string
 	SiteURL string
+	Storage *StorageUsage
 	User    *db.User
 	Error   string
 	Next    string
 	Data    any
+}
+
+// StorageUsage is the topbar's view of media bytes against the space the app
+// can grow into on the data filesystem.
+type StorageUsage struct {
+	UsedBytes     int64
+	CapacityBytes int64
+	Percent       int
+}
+
+func (s *Server) storageUsage(ctx context.Context) *StorageUsage {
+	used, err := s.Store.MediaStorageBytes(ctx)
+	if err != nil {
+		return nil
+	}
+	free, err := ingest.FreeSpace(s.Cfg.DataDir)
+	if err != nil {
+		return nil
+	}
+	capacity := used + int64(free)
+	percent := 0
+	if capacity > 0 {
+		percent = int((used * 100) / capacity)
+		if used > 0 && percent == 0 {
+			percent = 1
+		}
+	}
+	return &StorageUsage{UsedBytes: used, CapacityBytes: capacity, Percent: percent}
 }
 
 // Renderer holds one parsed template set per page.

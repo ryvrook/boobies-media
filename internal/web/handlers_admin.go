@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 
 	"boobies-media/internal/db"
@@ -32,6 +33,10 @@ type adminData struct {
 	Deps       []deps.Status
 	DepsAllOK  bool
 	Extractors []string
+	JobPage    int
+	JobPages   int
+	JobPrev    int
+	JobNext    int
 }
 
 // handleAdmin renders the admin dashboard. Every mutation is a JSON endpoint
@@ -76,7 +81,24 @@ func (s *Server) handleAdmin(w http.ResponseWriter, r *http.Request) {
 		{"min_free_disk_bytes", "Minimum free disk (bytes)", all["min_free_disk_bytes"]},
 	}
 
-	jobs, err := s.Store.ListJobs(ctx, 50)
+	const jobsPerPage = 20
+	jobCount, err := s.Store.CountJobs(ctx)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	jobPages := (jobCount + jobsPerPage - 1) / jobsPerPage
+	if jobPages == 0 {
+		jobPages = 1
+	}
+	jobPage, err := strconv.Atoi(r.URL.Query().Get("job_page"))
+	if err != nil || jobPage < 1 {
+		jobPage = 1
+	}
+	if jobPage > jobPages {
+		jobPage = jobPages
+	}
+	jobs, err := s.Store.ListJobsPage(ctx, jobsPerPage, (jobPage-1)*jobsPerPage)
 	if err != nil {
 		s.serverError(w, r, err)
 		return
@@ -95,6 +117,7 @@ func (s *Server) handleAdmin(w http.ResponseWriter, r *http.Request) {
 	data := PageData{
 		Title:   "Admin",
 		SiteURL: strings.TrimRight(s.Cfg.BaseURL, "/"),
+		Storage: s.storageUsage(r.Context()),
 		User:    user,
 		Data: adminData{
 			Users:      rows,
@@ -104,6 +127,10 @@ func (s *Server) handleAdmin(w http.ResponseWriter, r *http.Request) {
 			Deps:       s.Deps,
 			DepsAllOK:  deps.AllOK(s.Deps),
 			Extractors: ingest.Extractors,
+			JobPage:    jobPage,
+			JobPages:   jobPages,
+			JobPrev:    jobPage - 1,
+			JobNext:    jobPage + 1,
 		},
 	}
 	if err := s.Renderer.Render(w, http.StatusOK, "admin", data); err != nil {
