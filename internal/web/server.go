@@ -149,6 +149,7 @@ func New(cfg *config.Config, store *db.Store, depStatus []deps.Status, opts ...O
 	r.Post("/api/uploads/{id}/complete", s.handleUploadComplete)
 	r.Delete("/api/uploads/{id}", s.handleUploadCancel)
 	r.Get("/api/items", s.handleListItems)
+	r.Get("/api/items/ids", s.handleListItemIDs)
 	r.Post("/api/items/batch", s.handleBatchItems)
 	r.Get("/api/items/{id}", s.handleGetItem)
 	r.Patch("/api/items/{id}", s.handlePatchItem)

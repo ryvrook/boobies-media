@@ -56,6 +56,32 @@ func TestProbeFileHandlesAStillImage(t *testing.T) {
 	}
 }
 
+func TestProbeFileFallsBackToAnimatedWebPHeader(t *testing.T) {
+	store, _, _, cfg := newMediaStore(t)
+	media.StubTools(t, map[string]string{})
+	header := make([]byte, 30)
+	copy(header[0:4], "RIFF")
+	copy(header[8:12], "WEBP")
+	copy(header[12:16], "VP8X")
+	width, height := 184, 96
+	w := width - 1
+	h := height - 1
+	header[24], header[25], header[26] = byte(w), byte(w>>8), byte(w>>16)
+	header[27], header[28], header[29] = byte(h), byte(h>>8), byte(h>>16)
+	path := cfg.TmpDir() + "/animated.webp"
+	if err := os.WriteFile(path, header, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := store.ProbeFile(context.Background(), path)
+	if err != nil {
+		t.Fatalf("ProbeFile fallback: %v", err)
+	}
+	if got.Width != int64(width) || got.Height != int64(height) {
+		t.Errorf("dimensions = %dx%d, want %dx%d", got.Width, got.Height, width, height)
+	}
+}
+
 func TestProbeFileReportsAMissingTool(t *testing.T) {
 	store, _, _, _ := newMediaStore(t)
 	media.StubTools(t, map[string]string{})
@@ -371,6 +397,32 @@ printf '\211PNG\r\n\032\n' > "$last"`,
 	}
 	if info, err := os.Stat(dst); err != nil || info.Size() == 0 {
 		t.Fatalf("fallback thumbnail missing or empty: %v", err)
+	}
+}
+
+func TestThumbnailUsesOriginalWebPWhenEveryDecoderFails(t *testing.T) {
+	ctx := context.Background()
+	store, _, _, cfg := newMediaStore(t)
+	src := cfg.TmpDir() + "/browser-only.webp"
+	payload := append([]byte("RIFF____WEBPVP8X"), make([]byte, 48)...)
+	if err := os.WriteFile(src, payload, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	media.StubTools(t, map[string]string{
+		"ffmpeg":  "#!/bin/sh\nexit 1",
+		"dwebp":   "#!/bin/sh\nexit 1",
+		"webpmux": "#!/bin/sh\nexit 1",
+	})
+	dst := cfg.TmpDir() + "/browser-only-thumb.webp"
+	if err := store.GenerateThumbnail(ctx, src, dst, 320, false, 0); err != nil {
+		t.Fatalf("GenerateThumbnail original fallback: %v", err)
+	}
+	got, err := os.ReadFile(dst)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Error("last-resort thumbnail did not preserve the original WebP bytes")
 	}
 }
 

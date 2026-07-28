@@ -63,7 +63,13 @@ func (s *Store) GenerateThumbnail(ctx context.Context, srcPath, dstPath string, 
 			return err
 		}
 		if fallbackErr := s.generateWebPThumbnail(ctx, srcPath, dstPath, size); fallbackErr != nil {
-			return fmt.Errorf("%w; animated WebP fallback: %v", err, fallbackErr)
+			// Browsers often decode animated WebP files that distro FFmpeg
+			// and libwebp tooling reject. Preserve usability as a last resort:
+			// serve the original WebP at the thumbnail URL instead of leaving
+			// the library with a permanent broken image.
+			if copyErr := copyWebPThumbnail(srcPath, dstPath); copyErr != nil {
+				return fmt.Errorf("%w; animated WebP fallback: %v; original copy: %v", err, fallbackErr, copyErr)
+			}
 		}
 	}
 	info, err := os.Stat(dstPath)
@@ -79,16 +85,38 @@ func (s *Store) GenerateThumbnail(ctx context.Context, srcPath, dstPath string, 
 
 func sniffFile(path string) (string, error) {
 	file, err := os.Open(path)
-	if err != nil && err != io.EOF {
+	if err != nil {
 		return "", err
 	}
 	defer file.Close()
 	header := make([]byte, SniffLen)
 	n, err := file.Read(header)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return "", err
 	}
 	return Sniff(header[:n]), nil
+}
+
+func copyWebPThumbnail(srcPath, dstPath string) error {
+	src, err := os.Open(srcPath)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	tmp, err := os.CreateTemp(filepath.Dir(dstPath), ".thumb-copy-*.webp")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+	if _, err := io.Copy(tmp, src); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, dstPath)
 }
 
 func (s *Store) generateWebPThumbnail(ctx context.Context, srcPath, dstPath string, size int) error {

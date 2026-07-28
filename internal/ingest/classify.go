@@ -69,6 +69,13 @@ func Classify(raw string) (Classification, error) {
 		return Classification{}, fmt.Errorf("%w: URL has no host", ErrUnsupportedSource)
 	}
 	parsed.Fragment = ""
+	if hostMatches(host, "fixupx.com") {
+		normalized, ok := normalizeFixupX(parsed)
+		if !ok {
+			return Classification{}, fmt.Errorf("%w: FixupX URL is not a Twitter status", ErrUnsupportedSource)
+		}
+		return Classification{Kind: KindYtDlp, Extractor: "twitter", URL: normalized}, nil
+	}
 	normalized := parsed.String()
 	for _, candidate := range DiscordCDNHosts {
 		if hostMatches(host, candidate) {
@@ -85,4 +92,45 @@ func Classify(raw string) (Classification, error) {
 
 func hostMatches(host, want string) bool {
 	return host == want || strings.HasSuffix(host, "."+want)
+}
+
+func normalizeFixupX(parsed *url.URL) (string, bool) {
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	if len(parts) < 3 || !validTwitterUsername(parts[0]) || parts[1] != "status" || !allDigits(parts[2]) {
+		return "", false
+	}
+	parsed.Scheme = "https"
+	parsed.Host = "x.com"
+	parsed.Path = "/" + parts[0] + "/status/" + parts[2]
+	parsed.RawPath = ""
+	parsed.RawQuery = ""
+	parsed.Fragment = ""
+	return parsed.String(), true
+}
+
+func validTwitterUsername(value string) bool {
+	if value == "" || len(value) > 15 {
+		return false
+	}
+	for _, char := range value {
+		if (char < 'a' || char > 'z') &&
+			(char < 'A' || char > 'Z') &&
+			(char < '0' || char > '9') &&
+			char != '_' {
+			return false
+		}
+	}
+	return true
+}
+
+func allDigits(value string) bool {
+	if value == "" {
+		return false
+	}
+	for _, char := range value {
+		if char < '0' || char > '9' {
+			return false
+		}
+	}
+	return true
 }

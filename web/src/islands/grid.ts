@@ -43,6 +43,7 @@ interface ItemsPage {
 
 export function mountGrid(root: HTMLElement): void {
   mountGridSizeControl();
+  mountNearViewportImages(root);
   const status = document.querySelector<HTMLElement>('[data-role="grid-status"]');
   const count = document.querySelector<HTMLElement>('[data-role="grid-count"]');
   let cursor = root.dataset.cursor ?? "";
@@ -160,6 +161,45 @@ export function mountGrid(root: HTMLElement): void {
   });
 }
 
+function mountNearViewportImages(root: HTMLElement): void {
+  function load(image: HTMLImageElement): void {
+    const src = image.dataset.src;
+    if (!src) return;
+    image.src = src;
+    delete image.dataset.src;
+  }
+  if (!("IntersectionObserver" in window)) {
+    for (const image of root.querySelectorAll<HTMLImageElement>("img[data-src]")) load(image);
+    return;
+  }
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const image = entry.target as HTMLImageElement;
+        load(image);
+        observer.unobserve(image);
+      }
+    },
+    // Begin the thumbnail request before the tile reaches the viewport while
+    // keeping distant library pages completely unloaded.
+    { rootMargin: "1000px 0px" },
+  );
+  const observe = (node: ParentNode): void => {
+    for (const image of node.querySelectorAll<HTMLImageElement>("img[data-src]")) observer.observe(image);
+  };
+  observe(root);
+  new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        if (!(node instanceof HTMLElement)) continue;
+        if (node.matches("img[data-src]")) observer.observe(node as HTMLImageElement);
+        observe(node);
+      }
+    }
+  }).observe(root, { childList: true, subtree: true });
+}
+
 function mountGridSizeControl(): void {
   const input = document.querySelector<HTMLInputElement>('[data-action="grid-size"]');
   const output = document.querySelector<HTMLOutputElement>('[data-role="grid-size-value"]');
@@ -236,9 +276,8 @@ export function renderTile(item: ApiItem): HTMLElement {
   // the origin the page itself is actually served from (e.g. behind a
   // proxy). The existing /t/{id} route is same-origin and unaffected by
   // that mismatch, exactly as it was before this change.
-  img.src = `/t/${item.id}?s=320`;
+  img.dataset.src = `/t/${item.id}?s=320`;
   img.alt = "";
-  img.loading = "lazy";
   img.width = 320;
   img.height = 320;
   button.appendChild(img);

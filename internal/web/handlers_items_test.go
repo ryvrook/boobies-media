@@ -144,6 +144,26 @@ func TestListItemsAPIPaginatesWithACursor(t *testing.T) {
 	}
 }
 
+func TestListItemIDsReturnsFilteredSelectionWithoutMediaPayload(t *testing.T) {
+	ctx := context.Background()
+	srv, mediaStore, _ := mediaTestServer(t)
+	cookie := authenticate(t, srv, "aiden")
+	user, _ := srv.Store.UserByUsername(ctx, "aiden")
+	items := seedItems(t, mediaStore, user.ID, "match-one", "other", "match-two")
+
+	rec := apiRequest(t, srv, cookie, http.MethodGet, "/api/items/ids?q=match", "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("IDs status = %d: %s", rec.Code, rec.Body.String())
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, items[0].ID) || !strings.Contains(body, items[2].ID) {
+		t.Error("filtered ID response omitted matching items")
+	}
+	if strings.Contains(body, items[1].ID) || strings.Contains(body, `"thumb_url"`) {
+		t.Error("ID response included an unmatched item or full media payload")
+	}
+}
+
 func TestListItemsAPIRejectsABadSort(t *testing.T) {
 	srv, _, _ := mediaTestServer(t)
 	cookie := authenticate(t, srv, "aiden")

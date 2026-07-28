@@ -40,6 +40,7 @@ export function mountBulkSelect(root: HTMLElement): void {
 
   const selected = new Set<string>();
   let selecting = false;
+  let allMatching = false;
 
   function tileFor(id: string): HTMLElement | null {
     return grid!.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(id)}"]`);
@@ -59,6 +60,7 @@ export function mountBulkSelect(root: HTMLElement): void {
   function setSelected(id: string, on: boolean): void {
     if (on) selected.add(id);
     else selected.delete(id);
+    if (!on) allMatching = false;
     const tile = tileFor(id);
     if (tile) setTileSelected(tile, on);
   }
@@ -75,14 +77,42 @@ export function mountBulkSelect(root: HTMLElement): void {
     else stopActivePreview(); // a preview mid-hover should not keep playing under the checkboxes
   });
 
-  selectAllBtn?.addEventListener("click", () => {
-    const tiles = Array.from(grid.querySelectorAll<HTMLElement>('[data-role="tile"][data-item-id]'));
-    const allSelected = tiles.length > 0 && tiles.every((tile) => selected.has(tile.dataset.itemId ?? ""));
-    for (const tile of tiles) {
-      const id = tile.dataset.itemId;
-      if (id) setSelected(id, !allSelected);
+  selectAllBtn?.addEventListener("click", async () => {
+    if (allMatching) {
+      allMatching = false;
+      for (const id of Array.from(selected)) setSelected(id, false);
+      selectAllBtn.textContent = "Select all matching";
+      refresh();
+      return;
     }
-    refresh();
+    selectAllBtn.disabled = true;
+    selectAllBtn.textContent = "Selecting…";
+    try {
+      const params = new URLSearchParams();
+      for (const key of ["folder", "tag", "uploader", "q", "sort"] as const) {
+        const value = grid.dataset[key];
+        if (value) params.set(key, value);
+      }
+      const response = await fetch(`/api/items/ids?${params.toString()}`, {
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("selection request failed");
+      const { ids } = (await response.json()) as { ids: string[] };
+      selected.clear();
+      for (const id of ids) selected.add(id);
+      for (const tile of grid.querySelectorAll<HTMLElement>("[data-item-id]")) {
+        const id = tile.dataset.itemId;
+        if (id) setTileSelected(tile, selected.has(id));
+      }
+      allMatching = true;
+      selectAllBtn.textContent = "Clear all";
+      refresh();
+    } catch {
+      notify("Could not select the filtered library.", "error");
+      selectAllBtn.textContent = "Select all matching";
+    } finally {
+      selectAllBtn.disabled = false;
+    }
   });
 
   // Delegated so tiles grid.ts appends later (infinite scroll) work with no
@@ -123,17 +153,23 @@ export function mountBulkSelect(root: HTMLElement): void {
 
   async function apply(payload: Record<string, unknown>): Promise<void> {
     const ids = Array.from(selected);
-    const response = await fetch("/api/items/batch", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...payload, ids }),
-    });
-    if (!response.ok) {
-      const detail = (await response.json().catch(() => null)) as { error?: string } | null;
-      notify(detail?.error ?? "That bulk action failed.", "error");
-      return;
+    const result: BatchResult = { applied: 0, ok: [], failed: [] };
+    for (let offset = 0; offset < ids.length; offset += 500) {
+      const response = await fetch("/api/items/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, ids: ids.slice(offset, offset + 500) }),
+      });
+      if (!response.ok) {
+        const detail = (await response.json().catch(() => null)) as { error?: string } | null;
+        notify(detail?.error ?? "That bulk action failed.", "error");
+        return;
+      }
+      const chunk = (await response.json()) as BatchResult;
+      result.applied += chunk.applied;
+      result.ok.push(...chunk.ok);
+      result.failed.push(...chunk.failed);
     }
-    const result = (await response.json()) as BatchResult;
     const currentFolder = grid!.dataset.folder ?? "";
     for (const id of result.ok) {
       const tile = tileFor(id);
@@ -154,6 +190,8 @@ export function mountBulkSelect(root: HTMLElement): void {
         ? `${result.applied} item(s) updated.`
         : `${result.applied} item(s) updated, ${result.failed.length} could not be updated.`;
     refresh(summary);
+    allMatching = false;
+    if (selectAllBtn) selectAllBtn.textContent = "Select all matching";
     notify(summary, result.failed.length === 0 ? "success" : "info");
     // Give the aria-live announcement above a moment to be read before the
     // count reverts to the live "N selected" state.
@@ -184,4 +222,16 @@ export function mountBulkSelect(root: HTMLElement): void {
   });
 
   refresh();
+
+  // Infinite scroll can append a nearby tile after a filter-wide selection.
+  // Reflect its already-selected ID without causing any additional loading.
+  new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of record.addedNodes) {
+        if (!(node instanceof HTMLElement)) continue;
+        const id = node.dataset.itemId;
+        if (id && selected.has(id)) setTileSelected(node, true);
+      }
+    }
+  }).observe(grid, { childList: true });
 }

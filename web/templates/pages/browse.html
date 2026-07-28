@@ -120,7 +120,7 @@
           <input type="checkbox" data-action="select-mode">
           <span>Select</span>
         </label>
-        <button type="button" class="btn btn--quiet" data-action="select-all-loaded">Select all loaded</button>
+        <button type="button" class="btn btn--quiet" data-action="select-all-loaded">Select all matching</button>
         <span class="bulkbar__count" data-role="count" role="status" aria-live="polite">0 selected</span>
         <div class="bulkbar__spacer"></div>
         <button type="button" class="btn btn--quiet" data-action="bulk-move" disabled>Move</button>
@@ -139,7 +139,7 @@
                href="{{queryString "folder" .Folder.ID "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}"
                aria-label="Open folder {{.Folder.Name}}">
               <span class="folder-card__preview folder-card__preview--{{len .PreviewIDs}}" aria-hidden="true">
-                {{range .PreviewIDs}}<img src="/t/{{.}}?s=320" alt="" loading="lazy" width="320" height="320">{{end}}
+                {{range .PreviewIDs}}<img data-src="/t/{{.}}?s=320" alt="" width="320" height="320">{{end}}
                 {{if not .PreviewIDs}}
                 <span class="folder-card__empty">
                   <svg width="54" height="42" viewBox="0 0 54 42" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 9h17l5 6h28v25H2z"></path></svg>
@@ -165,7 +165,7 @@
               <input type="checkbox" data-action="select-item" aria-label="Select {{.title}}">
             </label>
             <button type="button" class="tile__button" data-action="open" aria-label="Open {{.title}}">
-              <img class="tile__image" src="/t/{{.id}}?s=320" alt="" loading="lazy" width="320" height="320">
+              <img class="tile__image" data-src="/t/{{.id}}?s=320" alt="" width="320" height="320">
               {{if not .ready}}
               <span class="tile__processing" aria-hidden="true">
                 <span class="tile__processing-label">PROCESSING</span>

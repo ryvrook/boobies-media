@@ -21,12 +21,26 @@ func TestClassify(t *testing.T) {
 		raw       string
 		kind      SourceKind
 		extractor string
+		url       string
 	}{
-		{"https://x.com/user/status/1", KindYtDlp, "twitter"},
-		{"https://WWW.YouTube.com/watch?v=x#fragment", KindYtDlp, "youtube"},
-		{"https://cdn.discordapp.com/attachments/1/2/a.png", KindDiscordCDN, ""},
-		{"https://example.com/a.png", KindDirect, ""},
-		{"https://youtube.com.evil.test/a", KindDirect, ""},
+		{"https://x.com/user/status/1", KindYtDlp, "twitter", ""},
+		{"https://WWW.YouTube.com/watch?v=x#fragment", KindYtDlp, "youtube", ""},
+		{"https://cdn.discordapp.com/attachments/1/2/a.png", KindDiscordCDN, "", ""},
+		{"https://example.com/a.png", KindDirect, "", ""},
+		{"https://youtube.com.evil.test/a", KindDirect, "", ""},
+		{
+			"https://fixupx.com/zoulilustration/status/2081867199158042728?s=46&t=_1fopWTRuUA6U0_iPPk81w",
+			KindYtDlp,
+			"twitter",
+			"https://x.com/zoulilustration/status/2081867199158042728",
+		},
+		{
+			"http://www.fixupx.com/user_name/status/123/photo/1?tracking=yes#media",
+			KindYtDlp,
+			"twitter",
+			"https://x.com/user_name/status/123",
+		},
+		{"https://fixupx.com.evil.test/user/status/123", KindDirect, "", ""},
 	}
 	for _, tc := range cases {
 		got, err := Classify(tc.raw)
@@ -36,8 +50,19 @@ func TestClassify(t *testing.T) {
 		if got.Kind != tc.kind || got.Extractor != tc.extractor || strings.Contains(got.URL, "#") {
 			t.Errorf("Classify(%q) = %+v", tc.raw, got)
 		}
+		if tc.url != "" && got.URL != tc.url {
+			t.Errorf("Classify(%q).URL = %q, want %q", tc.raw, got.URL, tc.url)
+		}
 	}
-	for _, raw := range []string{"", "file:///etc/passwd", "ftp://example.com/a", "not a url"} {
+	for _, raw := range []string{
+		"",
+		"file:///etc/passwd",
+		"ftp://example.com/a",
+		"not a url",
+		"https://fixupx.com/",
+		"https://fixupx.com/user/not-status/123",
+		"https://fixupx.com/user/status/not-a-number",
+	} {
 		if _, err := Classify(raw); !errors.Is(err, ErrUnsupportedSource) {
 			t.Errorf("Classify(%q) = %v, want ErrUnsupportedSource", raw, err)
 		}

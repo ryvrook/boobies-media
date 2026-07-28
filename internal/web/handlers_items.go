@@ -40,6 +40,35 @@ func (s *Server) handleListItems(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"items": payload, "next_cursor": next})
 }
 
+// handleListItemIDs returns the complete filtered selection as lightweight
+// IDs. It lets the browser select everything without rendering every tile or
+// requesting every thumbnail.
+func (s *Server) handleListItemIDs(w http.ResponseWriter, r *http.Request) {
+	query, err := s.listItemQuery(r)
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "bad_request", err.Error())
+		return
+	}
+	query.Limit = db.MaxItemLimit
+	query.Cursor = ""
+	ids := make([]string, 0)
+	for {
+		items, next, err := s.Store.ListItems(r.Context(), query)
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		for _, item := range items {
+			ids = append(ids, item.ID)
+		}
+		if next == "" {
+			break
+		}
+		query.Cursor = next
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ids": ids})
+}
+
 // listItemQuery parses the browse filters from the query string.
 func (s *Server) listItemQuery(r *http.Request) (db.ItemQuery, error) {
 	params := r.URL.Query()
