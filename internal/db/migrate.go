@@ -104,6 +104,14 @@ func loadMigrations() ([]migration, error) {
 }
 
 func applyMigration(sqlDB *sql.DB, m migration) error {
+	const foreignKeysOffMarker = "-- migrate:foreign-keys-off"
+	foreignKeysOff := strings.Contains(m.sql, foreignKeysOffMarker)
+	if foreignKeysOff {
+		if _, err := sqlDB.Exec(`PRAGMA foreign_keys = OFF`); err != nil {
+			return fmt.Errorf("db: disable foreign keys for migration %s: %w", m.name, err)
+		}
+		defer func() { _, _ = sqlDB.Exec(`PRAGMA foreign_keys = ON`) }()
+	}
 	tx, err := sqlDB.Begin()
 	if err != nil {
 		return fmt.Errorf("db: begin migration %s: %w", m.name, err)

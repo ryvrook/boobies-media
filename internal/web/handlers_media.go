@@ -64,6 +64,24 @@ func (s *Server) handleThumbnail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	path := media.ThumbPath(s.Cfg.ThumbsDir(), item.ContentHash, size)
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		if item.Width <= 0 || item.Height <= 0 {
+			http.NotFound(w, r)
+			return
+		}
+		if s.Media == nil {
+			http.Error(w, "media storage is not configured", http.StatusServiceUnavailable)
+			return
+		}
+		src := media.BlobPath(s.Cfg.FilesDir(), item.ContentHash)
+		if err := s.Media.GenerateThumbnail(r.Context(), src, path, size, media.IsVideoMime(item.Mime), item.Duration); err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+	} else if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
 	filename := media.SanitizeFilename(item.Title + ".webp")
 	s.serveFile(w, r, path, "image/webp", filename)
 }

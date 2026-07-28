@@ -18,6 +18,11 @@ type folderNode struct {
 	Depth  int
 }
 
+type folderCard struct {
+	Folder     *db.Folder
+	PreviewIDs []string
+}
+
 // IndentedName is the folder name prefixed with two non-breaking spaces per
 // level of depth. The lightbox's folder <select> needs it because option text
 // cannot be indented with CSS, and ordinary leading spaces collapse.
@@ -39,6 +44,7 @@ type browseData struct {
 	// than patching this server-derived markup in place. The lightbox's
 	// folder-move select is rendered from the same slice.
 	Folders         []folderNode
+	FolderCards     []folderCard
 	HasActiveFolder bool
 	ActiveFolderID  int64
 	FolderPath      []*db.Folder
@@ -142,6 +148,24 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	if query.FolderID != nil {
 		activeFolderID = *query.FolderID
 	}
+	childFolders, err := s.Store.ListChildFolders(r.Context(), activeFolderID)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	folderCards := make([]folderCard, 0, len(childFolders))
+	for _, folder := range childFolders {
+		previewItems, err := s.Store.FolderPreviewItems(r.Context(), folder.ID, 4)
+		if err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+		card := folderCard{Folder: folder, PreviewIDs: make([]string, 0, len(previewItems))}
+		for _, item := range previewItems {
+			card.PreviewIDs = append(card.PreviewIDs, item.ID)
+		}
+		folderCards = append(folderCards, card)
+	}
 
 	data := PageData{
 		Title:   "Browse",
@@ -155,6 +179,7 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 			Query:      r.URL.Query().Get("q"),
 
 			Folders:             buildFolderTree(folders),
+			FolderCards:         folderCards,
 			HasActiveFolder:     query.FolderID != nil,
 			ActiveFolderID:      activeFolderID,
 			FolderPath:          folderPath,

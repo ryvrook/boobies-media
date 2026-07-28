@@ -47,7 +47,7 @@ export function mountTilePreview(article: HTMLElement): void {
   const mime = article.dataset.mime ?? "";
   const mediaUrl = article.dataset.mediaUrl;
   const isVideo = VIDEO_MIMES.has(mime);
-  const isGif = mime === "image/gif";
+  const isGif = article.dataset.animated === "true";
   if (!mediaUrl || (!isVideo && !isGif)) return;
 
   const button = article.querySelector<HTMLElement>(".tile__button");

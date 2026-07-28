@@ -346,6 +346,30 @@ export function mountAdmin(root: HTMLElement): void {
           );
         }
         break;
+      case "retry-failed-jobs":
+        void send("/api/jobs/retry-failed", "POST").then(async (response) => {
+          if (!response.ok) {
+            notify(await failMessage(response), "error");
+            return;
+          }
+          const { applied } = (await response.json()) as { applied: number };
+          notify(`${applied} failed job${applied === 1 ? "" : "s"} queued for retry.`);
+          await refreshJobs();
+        });
+        break;
+      case "cancel-pending-jobs":
+        if (window.confirm("Cancel every pending job? Jobs already running will finish.")) {
+          void send("/api/jobs/cancel-pending", "POST").then(async (response) => {
+            if (!response.ok) {
+              notify(await failMessage(response), "error");
+              return;
+            }
+            const { applied } = (await response.json()) as { applied: number };
+            notify(`${applied} pending job${applied === 1 ? "" : "s"} cancelled.`);
+            await refreshJobs();
+          });
+        }
+        break;
       case "restore-item":
         if (itemRow) {
           void send(`/api/admin/items/${itemRow.dataset.itemId}/restore`, "POST").then((response) =>

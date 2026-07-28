@@ -71,6 +71,14 @@ func IsGifMime(mime string) bool {
 	return mime == "image/gif"
 }
 
+// IsAnimatedImage reports formats that should use the library's image preview
+// path. WebP does not persist its animation bit in the catalog, so every WebP
+// uses that path; loading a still WebP on hover is harmless, while excluding
+// it would strand animated WebPs as static images.
+func IsAnimatedImage(mime string, duration float64) bool {
+	return mime == "image/gif" || mime == "image/webp"
+}
+
 // Sniff identifies a file from its leading bytes, returning "" for anything
 // not on the allowlist. The filename is never consulted: an attacker controls
 // it, and they do not control magic bytes.

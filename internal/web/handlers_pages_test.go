@@ -117,6 +117,51 @@ func TestBrowseRendersTheFirstPageOfItems(t *testing.T) {
 	}
 }
 
+func TestBrowseRendersImmediateFolderCardsWithPreviewCollage(t *testing.T) {
+	ctx := context.Background()
+	srv, mediaStore, _ := mediaTestServer(t)
+	cookie := authenticate(t, srv, "aiden")
+	user, _ := srv.Store.UserByUsername(ctx, "aiden")
+	parent, err := srv.Store.CreateFolder(ctx, 0, "Trips")
+	if err != nil {
+		t.Fatalf("CreateFolder parent: %v", err)
+	}
+	child, err := srv.Store.CreateFolder(ctx, parent.ID, "Beach")
+	if err != nil {
+		t.Fatalf("CreateFolder child: %v", err)
+	}
+	items := seedItems(t, mediaStore, user.ID, "sunset", "waves")
+	if err := srv.Store.MoveItem(ctx, items[0].ID, parent.ID); err != nil {
+		t.Fatalf("MoveItem parent: %v", err)
+	}
+	if err := srv.Store.MoveItem(ctx, items[1].ID, child.ID); err != nil {
+		t.Fatalf("MoveItem child: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{
+		`class="folder-card"`,
+		`aria-label="Open folder Trips"`,
+		`class="folder-card__kind"`,
+		`/t/` + items[0].ID + `?s=320`,
+		`/t/` + items[1].ID + `?s=320`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("folder card is missing %q", want)
+		}
+	}
+	if strings.Contains(body, `aria-label="Open folder Beach"`) {
+		t.Error("root library rendered a nested folder as a direct folder card")
+	}
+}
+
 func TestBrowseEscapesItemTitles(t *testing.T) {
 	ctx := context.Background()
 	srv, mediaStore, _ := mediaTestServer(t)

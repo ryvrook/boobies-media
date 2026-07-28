@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -9,7 +10,15 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"boobies-media/internal/db"
+	"boobies-media/internal/jobs"
 )
+
+const folderMoveBatchSize = 500
+
+type folderMovePayload struct {
+	SourceID      int64 `json:"source_id"`
+	DestinationID int64 `json:"destination_id"`
+}
 
 func folderJSON(f *db.Folder) map[string]any {
 	return map[string]any{"id": f.ID, "parent_id": f.ParentID, "name": f.Name}
@@ -115,6 +124,69 @@ func (s *Server) handleDeleteFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleMoveFolderContents queues a bounded background move rather than
+// sending thousands of item IDs through the general 500-item batch endpoint.
+func (s *Server) handleMoveFolderContents(w http.ResponseWriter, r *http.Request) {
+	if !s.requireSameOrigin(w, r) {
+		return
+	}
+	if s.Queue == nil {
+		writeJSONError(w, http.StatusServiceUnavailable, "queue_unavailable", "the job queue is not running")
+		return
+	}
+	sourceID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil || sourceID <= 0 {
+		writeJSONError(w, http.StatusBadRequest, "bad_request", "folder id must be a positive number")
+		return
+	}
+	var body struct {
+		DestinationID int64 `json:"destination_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "bad_request", "invalid JSON body")
+		return
+	}
+	if sourceID == body.DestinationID {
+		writeJSONError(w, http.StatusConflict, "same_folder", "source and destination folders must be different")
+		return
+	}
+	if _, err := s.Store.FolderByID(r.Context(), sourceID); err != nil {
+		s.writeFolderError(w, r, err)
+		return
+	}
+	if body.DestinationID != 0 {
+		if _, err := s.Store.FolderByID(r.Context(), body.DestinationID); err != nil {
+			s.writeFolderError(w, r, err)
+			return
+		}
+	}
+	jobID, err := s.Queue.Enqueue(r.Context(), jobs.TypeFolderMove, folderMovePayload{
+		SourceID: sourceID, DestinationID: body.DestinationID,
+	})
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]any{"job_id": jobID, "status": "queued"})
+}
+
+func (s *Server) handleFolderMoveJob(ctx context.Context, job db.Job) error {
+	var payload folderMovePayload
+	if err := json.Unmarshal(job.Payload, &payload); err != nil {
+		return err
+	}
+	_, more, err := s.Store.MoveFolderItemsBatch(ctx, payload.SourceID, payload.DestinationID, folderMoveBatchSize)
+	if err != nil {
+		return err
+	}
+	if more {
+		if _, err := s.Queue.Enqueue(ctx, jobs.TypeFolderMove, payload); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // writeFolderError maps the folder store's sentinels to status codes without

@@ -347,6 +347,33 @@ printf 'RIFF__' > "$last"`,
 	}
 }
 
+func TestThumbnailFallsBackForAnimatedWebP(t *testing.T) {
+	ctx := context.Background()
+	store, _, _, cfg := newMediaStore(t)
+	src := cfg.TmpDir() + "/animated.webp"
+	if err := os.WriteFile(src, append([]byte("RIFF____WEBPVP8X"), make([]byte, 32)...), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	media.StubTools(t, map[string]string{
+		"ffmpeg": `#!/bin/sh
+case "$*" in
+  *".png"*) for last in "$@"; do :; done; printf 'RIFF____WEBPVP8 ' > "$last"; exit 0 ;;
+  *) exit 1 ;;
+esac`,
+		"dwebp": `#!/bin/sh
+for last in "$@"; do :; done
+printf '\211PNG\r\n\032\n' > "$last"`,
+	})
+
+	dst := cfg.TmpDir() + "/animated-thumb.webp"
+	if err := store.GenerateThumbnail(ctx, src, dst, 320, false, 2); err != nil {
+		t.Fatalf("GenerateThumbnail animated WebP fallback: %v", err)
+	}
+	if info, err := os.Stat(dst); err != nil || info.Size() == 0 {
+		t.Fatalf("fallback thumbnail missing or empty: %v", err)
+	}
+}
+
 func TestHandleThumbnailJobReportsAMissingTool(t *testing.T) {
 	ctx := context.Background()
 	store, database, _, _ := newMediaStore(t)

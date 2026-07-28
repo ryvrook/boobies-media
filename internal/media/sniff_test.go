@@ -138,3 +138,15 @@ func TestIsGifMime(t *testing.T) {
 		}
 	}
 }
+
+func TestIsAnimatedImageIncludesWebP(t *testing.T) {
+	if !IsAnimatedImage("image/gif", 0) {
+		t.Error("GIF was not classified as animated")
+	}
+	if !IsAnimatedImage("image/webp", 1.5) {
+		t.Error("timed WebP was not classified for image preview")
+	}
+	if !IsAnimatedImage("image/webp", 0) {
+		t.Error("WebP without a catalog duration was excluded from image preview")
+	}
+}

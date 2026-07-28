@@ -17,9 +17,10 @@ import (
 
 // Job type identifiers. These must match the CHECK constraint on jobs.type.
 const (
-	TypeIngestURL = "ingest_url"
-	TypeThumbnail = "thumbnail"
-	TypeProbe     = "probe"
+	TypeIngestURL  = "ingest_url"
+	TypeThumbnail  = "thumbnail"
+	TypeProbe      = "probe"
+	TypeFolderMove = "folder_move"
 )
 
 // MaxAttempts is how many times a job runs before it is marked failed. The UI

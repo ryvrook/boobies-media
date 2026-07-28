@@ -90,6 +90,26 @@ func TestRetryJobRejectsNonFailedAndMissing(t *testing.T) {
 	}
 }
 
+func TestAdminCanRetryAllFailedAndCancelPendingJobs(t *testing.T) {
+	ctx := context.Background()
+	srv, _, _ := mediaTestServer(t)
+	cookie := adminCookie(t, srv, "boss")
+	for i := 0; i < 2; i++ {
+		id, _ := srv.Store.EnqueueJob(ctx, "ingest_url", []byte(`{}`), srv.Now())
+		_ = srv.Store.FailJob(ctx, id, "boom")
+	}
+	_, _ = srv.Store.EnqueueJob(ctx, "ingest_url", []byte(`{}`), srv.Now())
+
+	rec := apiRequest(t, srv, cookie, http.MethodPost, "/api/jobs/retry-failed", "")
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"applied":2`) {
+		t.Fatalf("retry all status/body = %d %s", rec.Code, rec.Body.String())
+	}
+	rec = apiRequest(t, srv, cookie, http.MethodPost, "/api/jobs/cancel-pending", "")
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"applied":3`) {
+		t.Fatalf("cancel pending status/body = %d %s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestRestoreAndPurgeItem(t *testing.T) {
 	ctx := context.Background()
 	srv, mediaStore, _ := mediaTestServer(t)

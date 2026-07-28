@@ -112,6 +112,9 @@ func New(cfg *config.Config, store *db.Store, depStatus []deps.Status, opts ...O
 	for _, opt := range opts {
 		opt(s)
 	}
+	if s.Queue != nil {
+		s.Queue.Register(jobs.TypeFolderMove, s.handleFolderMoveJob)
+	}
 
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
@@ -159,6 +162,7 @@ func New(cfg *config.Config, store *db.Store, depStatus []deps.Status, opts ...O
 	r.Post("/api/folders", s.handleCreateFolder)
 	r.Patch("/api/folders/{id}", s.handleUpdateFolder)
 	r.Delete("/api/folders/{id}", s.handleDeleteFolder)
+	r.Post("/api/folders/{id}/move-contents", s.handleMoveFolderContents)
 	r.With(s.requireAdmin).Get("/admin", s.handleAdmin)
 
 	r.With(s.requireAdmin).Post("/api/admin/users", s.handleCreateUser)
@@ -170,6 +174,8 @@ func New(cfg *config.Config, store *db.Store, depStatus []deps.Status, opts ...O
 	r.With(s.requireAdmin).Post("/api/admin/settings", s.handleSaveSettings)
 	r.With(s.requireAdmin).Post("/api/admin/test-ingest", s.handleTestIngest)
 
+	r.With(s.requireAdmin).Post("/api/jobs/retry-failed", s.handleRetryFailedJobs)
+	r.With(s.requireAdmin).Post("/api/jobs/cancel-pending", s.handleCancelPendingJobs)
 	r.With(s.requireAdmin).Post("/api/jobs/{id}/retry", s.handleRetryJob)
 	r.With(s.requireAdmin).Post("/api/admin/items/{id}/restore", s.handleRestoreItem)
 	r.With(s.requireAdmin).Delete("/api/admin/items/{id}/purge", s.handlePurgeItem)

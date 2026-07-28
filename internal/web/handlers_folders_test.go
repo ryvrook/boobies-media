@@ -1,11 +1,14 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"boobies-media/internal/jobs"
 )
 
 type folderResp struct {
@@ -82,6 +85,40 @@ func TestFolderCRUDRoundTrip(t *testing.T) {
 	rec = apiRequest(t, srv, cookie, http.MethodDelete, "/api/folders/"+itoa(child), "")
 	if rec.Code != http.StatusNoContent {
 		t.Errorf("delete status = %d, want 204", rec.Code)
+	}
+}
+
+func TestMoveFolderContentsQueuesAndRunsBackgroundJob(t *testing.T) {
+	ctx := context.Background()
+	srv, mediaStore, _ := mediaTestServer(t)
+	queue := jobs.New(srv.Store, 1)
+	srv.Queue = queue
+	queue.Register(jobs.TypeFolderMove, srv.handleFolderMoveJob)
+	cookie := authenticate(t, srv, "aiden")
+	user, _ := srv.Store.UserByUsername(ctx, "aiden")
+	source := createFolder(t, srv, cookie, "Source", 0)
+	destination := createFolder(t, srv, cookie, "Destination", 0)
+	items := seedItems(t, mediaStore, user.ID, "one", "two")
+	for _, item := range items {
+		if err := srv.Store.MoveItem(ctx, item.ID, source); err != nil {
+			t.Fatalf("MoveItem: %v", err)
+		}
+	}
+
+	body := `{"destination_id":` + itoa(destination) + `}`
+	rec := apiRequest(t, srv, cookie, http.MethodPost, "/api/folders/"+itoa(source)+"/move-contents", body)
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("queue move status = %d: %s", rec.Code, rec.Body.String())
+	}
+	ran, err := queue.RunOnce(ctx)
+	if err != nil || !ran {
+		t.Fatalf("RunOnce = %v, %v; want true, nil", ran, err)
+	}
+	for _, item := range items {
+		got, err := srv.Store.ItemByID(ctx, item.ID)
+		if err != nil || got.FolderID != destination {
+			t.Errorf("item %s destination = %d, %v; want %d", item.ID, got.FolderID, err, destination)
+		}
 	}
 }
 

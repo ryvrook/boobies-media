@@ -182,6 +182,8 @@ export function mountUploader(root: HTMLElement): void {
   const grid = document.querySelector<HTMLElement>('[data-island="grid"]');
   const trigger = document.querySelector<HTMLButtonElement>('[data-action="toggle-uploader"]');
   const queueCount = document.querySelector<HTMLElement>('[data-role="queue-count"]');
+  const cancelAll = root.querySelector<HTMLButtonElement>('[data-action="cancel-all"]');
+  const activeControllers = new Set<AbortController>();
   // The folder currently being browsed, if any (see browse.html), so a
   // file dropped while looking at "holiday / 2026" lands there rather than
   // always at the root. There is no folder-picker in this panel: moving an
@@ -253,7 +255,13 @@ export function mountUploader(root: HTMLElement): void {
         queueCount.textContent = String(active);
       }
     }
+    if (cancelAll) cancelAll.disabled = activeControllers.size === 0;
   }
+
+  cancelAll?.addEventListener("click", () => {
+    for (const controller of activeControllers) controller.abort();
+    notify(`Cancelling ${activeControllers.size} active upload${activeControllers.size === 1 ? "" : "s"}.`, "info");
+  });
 
   // Whole-window drag and drop, so a file can be dropped anywhere, and the
   // panel opens to show the drop target and the live file count.
@@ -310,6 +318,8 @@ export function mountUploader(root: HTMLElement): void {
   }
 
   async function ingestURL(url: string): Promise<void> {
+    const controller = new AbortController();
+    activeControllers.add(controller);
     const row = document.createElement("li");
     row.className = "uploads__row";
     list!.appendChild(row);
@@ -322,6 +332,7 @@ export function mountUploader(root: HTMLElement): void {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
+        signal: controller.signal,
       });
       if (!response.ok) {
         const detail = (await response.json().catch(() => null)) as IngestError | null;
@@ -330,22 +341,33 @@ export function mountUploader(root: HTMLElement): void {
         return;
       }
       const accepted = (await response.json()) as { job_id: number };
-      await pollJob(accepted.job_id, label, row);
+      await pollJob(accepted.job_id, label, row, controller.signal);
     } catch {
-      renderRow(row, label, { status: "failed", statusText: "the server could not be reached" });
+      renderRow(row, label, {
+        status: controller.signal.aborted ? "cancelled" : "failed",
+        statusText: controller.signal.aborted ? "cancelled" : "the server could not be reached",
+      });
+      refreshSummary();
+    } finally {
+      activeControllers.delete(controller);
       refreshSummary();
     }
   }
 
-  async function pollJob(jobID: number, label: string, row: HTMLLIElement): Promise<void> {
+  async function pollJob(jobID: number, label: string, row: HTMLLIElement, signal: AbortSignal): Promise<void> {
     const deadline = Date.now() + 10 * 60 * 1000;
     renderRow(row, label, { status: "uploading", statusText: "downloading" });
     refreshSummary();
     while (Date.now() < deadline) {
+      if (signal.aborted) {
+        renderRow(row, label, { status: "cancelled", statusText: "cancelled" });
+        refreshSummary();
+        return;
+      }
       await new Promise((resolve) => window.setTimeout(resolve, 2000));
       let response: Response;
       try {
-        response = await fetch(`/api/jobs/${jobID}`, { headers: { Accept: "application/json" } });
+        response = await fetch(`/api/jobs/${jobID}`, { headers: { Accept: "application/json" }, signal });
       } catch {
         continue;
       }
@@ -415,6 +437,7 @@ export function mountUploader(root: HTMLElement): void {
 
   async function runUpload(file: File, row: HTMLLIElement): Promise<void> {
     const controller = new AbortController();
+    activeControllers.add(controller);
     let uploadID: string | null = null;
 
     renderRow(row, file.name, {
@@ -562,6 +585,9 @@ export function mountUploader(root: HTMLElement): void {
         console.error(err);
         renderRow(row, file.name, { status: "failed", statusText: "upload failed", actions: retryOrRemove() });
       }
+      refreshSummary();
+    } finally {
+      activeControllers.delete(controller);
       refreshSummary();
     }
   }

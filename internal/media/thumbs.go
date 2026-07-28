@@ -3,6 +3,7 @@ package media
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -53,7 +54,17 @@ func (s *Store) GenerateThumbnail(ctx context.Context, srcPath, dstPath string, 
 		dstPath)
 
 	if _, err := s.Runner.Run(ctx, "ffmpeg", args...); err != nil {
-		return err
+		// Some distro FFmpeg builds cannot decode animated WebP containers and
+		// report "image data not found". Providers commonly serve animated
+		// WebP for URLs users think of as GIFs. Extract its first frame with
+		// libwebp's own tools, then let the normal FFmpeg resize path consume
+		// the resulting PNG.
+		if mime, sniffErr := sniffFile(srcPath); sniffErr != nil || mime != "image/webp" {
+			return err
+		}
+		if fallbackErr := s.generateWebPThumbnail(ctx, srcPath, dstPath, size); fallbackErr != nil {
+			return fmt.Errorf("%w; animated WebP fallback: %v", err, fallbackErr)
+		}
 	}
 	info, err := os.Stat(dstPath)
 	if err != nil {
@@ -64,6 +75,56 @@ func (s *Store) GenerateThumbnail(ctx context.Context, srcPath, dstPath string, 
 		return fmt.Errorf("media: ffmpeg wrote an empty thumbnail for %s", srcPath)
 	}
 	return nil
+}
+
+func sniffFile(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil && err != io.EOF {
+		return "", err
+	}
+	defer file.Close()
+	header := make([]byte, SniffLen)
+	n, err := file.Read(header)
+	if err != nil {
+		return "", err
+	}
+	return Sniff(header[:n]), nil
+}
+
+func (s *Store) generateWebPThumbnail(ctx context.Context, srcPath, dstPath string, size int) error {
+	dir := filepath.Dir(dstPath)
+	png, err := os.CreateTemp(dir, ".webp-frame-*.png")
+	if err != nil {
+		return err
+	}
+	pngPath := png.Name()
+	_ = png.Close()
+	defer os.Remove(pngPath)
+
+	// dwebp handles normal WebP directly. Animated WebP requires webpmux to
+	// split out frame 1 first.
+	if _, err := s.Runner.Run(ctx, "dwebp", srcPath, "-o", pngPath); err != nil {
+		frame, createErr := os.CreateTemp(dir, ".webp-frame-*.webp")
+		if createErr != nil {
+			return createErr
+		}
+		framePath := frame.Name()
+		_ = frame.Close()
+		defer os.Remove(framePath)
+		if _, muxErr := s.Runner.Run(ctx, "webpmux", "-get", "frame", "1", srcPath, "-o", framePath); muxErr != nil {
+			return muxErr
+		}
+		if _, decodeErr := s.Runner.Run(ctx, "dwebp", framePath, "-o", pngPath); decodeErr != nil {
+			return decodeErr
+		}
+	}
+
+	scale := fmt.Sprintf("scale='min(%d,iw)':'min(%d,ih)':force_original_aspect_ratio=decrease:flags=lanczos", size, size)
+	_, err = s.Runner.Run(ctx, "ffmpeg",
+		"-v", "error", "-y", "-i", pngPath, "-frames:v", "1",
+		"-vf", scale, "-c:v", "libwebp", "-lossless", "0",
+		"-quality", thumbnailQuality, "-f", "image2", dstPath)
+	return err
 }
 
 // GenerateSocialPreview creates a bounded JPEG poster for Open Graph and

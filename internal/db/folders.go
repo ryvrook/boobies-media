@@ -121,6 +121,131 @@ func (s *Store) ListFolders(ctx context.Context) ([]*Folder, error) {
 	return folders, nil
 }
 
+// ListChildFolders returns the folders directly inside parentID. A parentID
+// of zero means the library root.
+func (s *Store) ListChildFolders(ctx context.Context, parentID int64) ([]*Folder, error) {
+	var (
+		rows *sql.Rows
+		err  error
+	)
+	if parentID == 0 {
+		rows, err = s.DB.QueryContext(ctx,
+			`SELECT `+folderColumns+` FROM folders WHERE parent_id IS NULL ORDER BY lower(name)`)
+	} else {
+		rows, err = s.DB.QueryContext(ctx,
+			`SELECT `+folderColumns+` FROM folders WHERE parent_id = ? ORDER BY lower(name)`, parentID)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("db: list child folders: %w", err)
+	}
+	defer rows.Close()
+
+	var folders []*Folder
+	for rows.Next() {
+		folder, err := scanFolder(rows)
+		if err != nil {
+			return nil, err
+		}
+		folders = append(folders, folder)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("db: iterate child folders: %w", err)
+	}
+	return folders, nil
+}
+
+// FolderPreviewItems returns the newest live media in a folder's complete
+// subtree. Parent folder cards therefore still preview useful media when the
+// files themselves are organized into child folders.
+func (s *Store) FolderPreviewItems(ctx context.Context, folderID int64, limit int) ([]*Item, error) {
+	if limit <= 0 || limit > 8 {
+		limit = 4
+	}
+	rows, err := s.DB.QueryContext(ctx, `
+		WITH RECURSIVE subtree(id) AS (
+			SELECT id FROM folders WHERE id = ?
+			UNION ALL
+			SELECT f.id FROM folders f JOIN subtree s ON f.parent_id = s.id
+		)
+		SELECT `+itemColumns+`
+		FROM items i
+		WHERE i.deleted_at IS NULL AND i.folder_id IN (SELECT id FROM subtree)
+		ORDER BY i.created_at DESC, i.id DESC
+		LIMIT ?`, folderID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("db: list folder preview items: %w", err)
+	}
+	defer rows.Close()
+
+	var items []*Item
+	for rows.Next() {
+		item, err := scanItem(rows)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("db: iterate folder preview items: %w", err)
+	}
+	return items, nil
+}
+
+// MoveFolderItemsBatch moves at most limit live or trashed items directly
+// contained by sourceID. It returns the number moved and whether more remain.
+func (s *Store) MoveFolderItemsBatch(ctx context.Context, sourceID, destinationID int64, limit int) (int64, bool, error) {
+	if sourceID == destinationID {
+		return 0, false, fmt.Errorf("db: source and destination folders are the same")
+	}
+	if sourceID != 0 {
+		if _, err := s.FolderByID(ctx, sourceID); err != nil {
+			return 0, false, err
+		}
+	}
+	if destinationID != 0 {
+		if _, err := s.FolderByID(ctx, destinationID); err != nil {
+			return 0, false, err
+		}
+	}
+	if limit <= 0 || limit > 500 {
+		limit = 500
+	}
+
+	sourceClause := "folder_id IS NULL"
+	args := []any{}
+	if sourceID != 0 {
+		sourceClause = "folder_id = ?"
+		args = append(args, sourceID)
+	}
+	args = append(args, nullableID(destinationID), limit)
+	query := `UPDATE items SET folder_id = ? WHERE id IN (
+		SELECT id FROM items WHERE ` + sourceClause + ` ORDER BY id LIMIT ?
+	)`
+	// The destination argument appears before the source argument in SQL.
+	if sourceID != 0 {
+		args = []any{nullableID(destinationID), sourceID, limit}
+	}
+	res, err := s.DB.ExecContext(ctx, query, args...)
+	if err != nil {
+		return 0, false, fmt.Errorf("db: move folder items batch: %w", err)
+	}
+	moved, err := res.RowsAffected()
+	if err != nil {
+		return 0, false, fmt.Errorf("db: move folder items batch count: %w", err)
+	}
+
+	var remaining int
+	countQuery := `SELECT EXISTS(SELECT 1 FROM items WHERE ` + sourceClause + `)`
+	countArgs := []any{}
+	if sourceID != 0 {
+		countArgs = append(countArgs, sourceID)
+	}
+	if err := s.DB.QueryRowContext(ctx, countQuery, countArgs...).Scan(&remaining); err != nil {
+		return moved, false, fmt.Errorf("db: check remaining folder items: %w", err)
+	}
+	return moved, remaining != 0, nil
+}
+
 // RenameFolder changes a folder's name in place.
 func (s *Store) RenameFolder(ctx context.Context, id int64, name string) error {
 	clean, err := NormalizeFolderName(name)

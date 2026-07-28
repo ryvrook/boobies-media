@@ -612,6 +612,129 @@ main.browse__main {
   min-width: 90px;
   background: var(--raised);
 }
+
+.folder-card {
+  --aspect: 1.35;
+  position: relative;
+  flex: var(--aspect) 1 calc(var(--aspect) * var(--row-h));
+  height: var(--row-h);
+  min-width: 180px;
+  background: var(--raised);
+}
+
+.folder-card::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: -5px;
+  left: 12px;
+  width: 58px;
+  height: 6px;
+  border: 1px solid var(--hairline-strong);
+  border-bottom: 0;
+  background: var(--raised);
+  pointer-events: none;
+}
+
+.folder-card__link {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--hairline-strong);
+  color: var(--text);
+  background: var(--ground);
+}
+
+.folder-card__link:hover,
+.folder-card__link:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.folder-card__preview {
+  position: absolute;
+  inset: 0 0 48px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 2px;
+  overflow: hidden;
+  background: var(--raised);
+}
+
+.folder-card__preview img {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  object-fit: cover;
+  opacity: 0.82;
+  transition: opacity 140ms ease, transform 180ms ease;
+}
+
+.folder-card__link:hover .folder-card__preview img,
+.folder-card__link:focus-visible .folder-card__preview img {
+  opacity: 1;
+  transform: scale(1.025);
+}
+
+.folder-card__preview--1 img { grid-column: 1 / -1; grid-row: 1 / -1; }
+.folder-card__preview--2 img { grid-row: 1 / -1; }
+.folder-card__preview--3 img:first-child { grid-row: 1 / -1; }
+
+.folder-card__empty {
+  grid-column: 1 / -1;
+  grid-row: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  background:
+    linear-gradient(135deg, transparent 0 48%, var(--hairline) 49% 51%, transparent 52%),
+    var(--raised);
+}
+
+.folder-card__label {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border-top: 1px solid var(--hairline-strong);
+  background: rgba(11, 11, 12, 0.96);
+}
+
+.folder-card__kind {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 5px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.folder-card__name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tile__button {
   position: relative;
   display: block;

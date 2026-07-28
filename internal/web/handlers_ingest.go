@@ -183,7 +183,7 @@ func itemJSON(item *db.Item, tags []string, baseURL string) map[string]any {
 		"source_url": item.SourceURL,
 		"tags":       tags,
 		"is_video":   media.IsVideoMime(item.Mime),
-		"is_gif":     media.IsGifMime(item.Mime),
+		"is_gif":     media.IsAnimatedImage(item.Mime, item.Duration),
 		// ready is false until the probe job fills in the dimensions; the grid
 		// shows a processing placeholder until then.
 		"ready":      item.Width > 0,

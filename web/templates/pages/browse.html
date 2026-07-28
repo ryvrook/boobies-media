@@ -133,9 +133,33 @@
             data-cursor="{{$data.NextCursor}}" data-sort="{{$sort}}"
             data-tag="{{$activeTag}}" data-folder="{{if $data.HasActiveFolder}}{{$fid}}{{end}}"
             data-uploader="{{if $up}}{{$up}}{{end}}" data-q="{{$q}}">
+          {{range $data.FolderCards}}
+          <li class="folder-card" role="listitem" data-role="folder-card">
+            <a class="folder-card__link"
+               href="{{queryString "folder" .Folder.ID "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}"
+               aria-label="Open folder {{.Folder.Name}}">
+              <span class="folder-card__preview folder-card__preview--{{len .PreviewIDs}}" aria-hidden="true">
+                {{range .PreviewIDs}}<img src="/t/{{.}}?s=320" alt="" loading="lazy" width="320" height="320">{{end}}
+                {{if not .PreviewIDs}}
+                <span class="folder-card__empty">
+                  <svg width="54" height="42" viewBox="0 0 54 42" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 9h17l5 6h28v25H2z"></path></svg>
+                </span>
+                {{end}}
+              </span>
+              <span class="folder-card__label">
+                <span class="folder-card__kind">
+                  <svg width="13" height="11" viewBox="0 0 16 13" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M1 2h5l2 2h7v8H1z"></path></svg>
+                  Folder
+                </span>
+                <span class="folder-card__name">{{.Folder.Name}}</span>
+              </span>
+            </a>
+          </li>
+          {{end}}
           {{range $data.Items}}
           <li class="tile{{if not .ready}} tile--processing{{end}}" role="listitem"
               data-item-id="{{.id}}" data-role="tile" data-mime="{{.mime}}" data-media-url="{{.media_url}}"
+              data-animated="{{.is_gif}}"
               style="--aspect:{{aspectRatio .width .height}}">
             <label class="tile__select">
               <input type="checkbox" data-action="select-item" aria-label="Select {{.title}}">
@@ -150,7 +174,7 @@
               </span>
               {{else}}
               {{if .is_video}}<span class="tile__badge">&#9654; {{fmtDuration .duration}}</span>
-              {{else if .is_gif}}<span class="tile__badge">GIF</span>{{end}}
+              {{else if .is_gif}}<span class="tile__badge">{{if eq .mime "image/gif"}}GIF{{else}}WEBP{{end}}</span>{{end}}
               <span class="tile__cap">
                 <span class="tile__cap-title">{{.title}}</span>
                 <span class="tile__cap-meta"><span>{{if .is_video}}{{fmtDuration .duration}} &#183; {{end}}{{fmtBytes .size}}</span><span>{{if .width}}{{.width}}&#215;{{.height}}{{end}}</span></span>
@@ -159,12 +183,14 @@
             </button>
           </li>
           {{else}}
+          {{if not $data.FolderCards}}
           <li class="empty" data-role="empty">
             <span class="empty__mark" aria-hidden="true"><span></span></span>
             <p class="empty__title">Nothing here yet</p>
             <p class="empty__body">Drop a video or a photo and it lands on the sheet for everyone. Nobody outside this box can see it.</p>
             <button type="button" class="btn" data-action="empty-upload">Choose files</button>
           </li>
+          {{end}}
           {{end}}
         </ul>
         <p class="grid__status" data-role="grid-status" hidden>Loading&#8230;</p>
@@ -184,6 +210,7 @@
       <h2>Uploading</h2>
       <span class="uploader__summary" data-role="summary" hidden></span>
       <div class="uploader__spacer"></div>
+      <button type="button" class="btn btn--danger" data-action="cancel-all" disabled>Cancel all</button>
       <button type="button" class="uploader__close" data-action="close" aria-label="Close upload queue">&#215;</button>
     </div>
     <div class="dropzone" data-role="dropzone">

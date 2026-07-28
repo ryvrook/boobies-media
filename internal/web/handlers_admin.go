@@ -26,17 +26,19 @@ type adminSetting struct {
 }
 
 type adminData struct {
-	Users      []adminUserRow
-	Settings   []adminSetting
-	Jobs       []*db.Job
-	Trash      []map[string]any
-	Deps       []deps.Status
-	DepsAllOK  bool
-	Extractors []string
-	JobPage    int
-	JobPages   int
-	JobPrev    int
-	JobNext    int
+	Users       []adminUserRow
+	Settings    []adminSetting
+	Jobs        []*db.Job
+	Trash       []map[string]any
+	Deps        []deps.Status
+	DepsAllOK   bool
+	Extractors  []string
+	JobPage     int
+	JobPages    int
+	JobPrev     int
+	JobNext     int
+	FailedJobs  int
+	PendingJobs int
 }
 
 // handleAdmin renders the admin dashboard. Every mutation is a JSON endpoint
@@ -103,6 +105,16 @@ func (s *Server) handleAdmin(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, r, err)
 		return
 	}
+	failedJobs, err := s.Store.CountJobsByStatus(ctx, "failed")
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	pendingJobs, err := s.Store.CountPendingCancellableJobs(ctx)
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
 	trashItems, err := s.Store.ListDeletedItems(ctx, 100)
 	if err != nil {
 		s.serverError(w, r, err)
@@ -120,17 +132,19 @@ func (s *Server) handleAdmin(w http.ResponseWriter, r *http.Request) {
 		Storage: s.storageUsage(r.Context()),
 		User:    user,
 		Data: adminData{
-			Users:      rows,
-			Settings:   settings,
-			Jobs:       jobs,
-			Trash:      trash,
-			Deps:       s.Deps,
-			DepsAllOK:  deps.AllOK(s.Deps),
-			Extractors: ingest.Extractors,
-			JobPage:    jobPage,
-			JobPages:   jobPages,
-			JobPrev:    jobPage - 1,
-			JobNext:    jobPage + 1,
+			Users:       rows,
+			Settings:    settings,
+			Jobs:        jobs,
+			Trash:       trash,
+			Deps:        s.Deps,
+			DepsAllOK:   deps.AllOK(s.Deps),
+			Extractors:  ingest.Extractors,
+			JobPage:     jobPage,
+			JobPages:    jobPages,
+			JobPrev:     jobPage - 1,
+			JobNext:     jobPage + 1,
+			FailedJobs:  failedJobs,
+			PendingJobs: pendingJobs,
 		},
 	}
 	if err := s.Renderer.Render(w, http.StatusOK, "admin", data); err != nil {

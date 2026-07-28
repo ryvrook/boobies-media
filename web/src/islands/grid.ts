@@ -204,6 +204,7 @@ export function renderTile(item: ApiItem): HTMLElement {
   // decide whether this tile has a hover preview and, if so, its source.
   li.dataset.mime = item.mime;
   li.dataset.mediaUrl = item.media_url;
+  li.dataset.animated = String(item.is_gif);
   // Drives the justified grid's per-line flex-grow share; see main.css's
   // .tile and internal/web/templatefuncs.go's aspectRatio for the
   // server-rendered equivalent.
@@ -269,7 +270,7 @@ export function renderTile(item: ApiItem): HTMLElement {
   } else if (item.is_gif) {
     const badge = document.createElement("span");
     badge.className = "tile__badge";
-    badge.textContent = "GIF";
+    badge.textContent = item.mime === "image/gif" ? "GIF" : "WEBP";
     button.appendChild(badge);
   }
 

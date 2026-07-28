@@ -42,6 +42,30 @@ func (s *Server) handleRetryJob(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
+func (s *Server) handleRetryFailedJobs(w http.ResponseWriter, r *http.Request) {
+	if !s.requireSameOrigin(w, r) {
+		return
+	}
+	count, err := s.Store.RequeueAllFailedJobs(r.Context(), s.Now())
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"applied": count})
+}
+
+func (s *Server) handleCancelPendingJobs(w http.ResponseWriter, r *http.Request) {
+	if !s.requireSameOrigin(w, r) {
+		return
+	}
+	count, err := s.Store.CancelPendingJobs(r.Context())
+	if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"applied": count})
+}
+
 // handleRestoreItem serves POST /api/admin/items/{id}/restore, the inverse of
 // soft delete. Scoped to admins per the brief: unlike SoftDeleteItem, restore
 // here does not check uploader ownership.

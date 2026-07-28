@@ -93,3 +93,27 @@ func TestRequeueJobRejectsNonFailedAndMissing(t *testing.T) {
 		t.Errorf("requeue of a missing job = %v, want ErrNotFound", err)
 	}
 }
+
+func TestBulkRetryAndCancelPendingJobs(t *testing.T) {
+	ctx := context.Background()
+	store := dbtest.New(t)
+	failedA, _ := store.EnqueueJob(ctx, "ingest_url", []byte(`{}`), adminJobEpoch)
+	failedB, _ := store.EnqueueJob(ctx, "ingest_url", []byte(`{}`), adminJobEpoch)
+	pending, _ := store.EnqueueJob(ctx, "ingest_url", []byte(`{}`), adminJobEpoch)
+	_ = store.FailJob(ctx, failedA, "a")
+	_ = store.FailJob(ctx, failedB, "b")
+
+	retried, err := store.RequeueAllFailedJobs(ctx, adminJobEpoch)
+	if err != nil || retried != 2 {
+		t.Fatalf("RequeueAllFailedJobs = %d, %v; want 2, nil", retried, err)
+	}
+	cancelled, err := store.CancelPendingJobs(ctx)
+	if err != nil || cancelled != 3 {
+		t.Fatalf("CancelPendingJobs = %d, %v; want 3, nil", cancelled, err)
+	}
+	for _, id := range []int64{failedA, failedB, pending} {
+		if _, err := store.JobByID(ctx, id); !errors.Is(err, db.ErrNotFound) {
+			t.Errorf("job %d survived pending cancellation: %v", id, err)
+		}
+	}
+}

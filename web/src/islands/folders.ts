@@ -208,6 +208,11 @@ export function mountFolders(root: HTMLElement): void {
       });
     });
 
+    const moveContents = el("button", "btn btn--quiet", "Move contents");
+    moveContents.type = "button";
+    moveContents.setAttribute("aria-label", `Move every item in ${folder.name}`);
+    moveContents.addEventListener("click", () => showMoveContents(folder, rows));
+
     const remove = el("button", "btn btn--danger", "Delete");
     remove.type = "button";
     remove.setAttribute("aria-label", `Delete ${folder.name}`);
@@ -220,9 +225,39 @@ export function mountFolders(root: HTMLElement): void {
     });
 
     const actions = el("div", "foldermgr__actions");
-    actions.append(move, rename, remove);
+    actions.append(move, moveContents, rename, remove);
     li.append(name, actions);
     return li;
+  }
+
+  function showMoveContents(folder: ApiFolder, rows: FolderRow[]): void {
+    clearError();
+    const text = el(
+      "p",
+      "modal__text",
+      `Move every media item directly inside “${folder.name}” in background batches of 500.`,
+    );
+    const field = el("label", "modal__field");
+    const destination = folderPicker(rows, 0, folder.id);
+    field.append(el("span", undefined, "Destination"), destination);
+    const actions = el("div", "modal__actions");
+    const back = el("button", "btn btn--quiet", "Back");
+    back.type = "button";
+    back.addEventListener("click", () => void openManager());
+    const submit = el("button", "btn", "Queue move");
+    submit.type = "button";
+    submit.addEventListener("click", async () => {
+      clearError();
+      submit.disabled = true;
+      const ok = await send(`/api/folders/${folder.id}/move-contents`, "POST", {
+        destination_id: Number(destination.value),
+      });
+      if (ok) reload(`Moving everything from “${folder.name}” in the background.`);
+      else submit.disabled = false;
+    });
+    actions.append(back, submit);
+    modal.body.replaceChildren(errorBox, text, field, actions);
+    destination.focus();
   }
 
   function render(folders: ApiFolder[]): void {

@@ -69,6 +69,46 @@ func (s *Store) CountJobs(ctx context.Context) (int, error) {
 	return count, nil
 }
 
+func (s *Store) CountJobsByStatus(ctx context.Context, status string) (int, error) {
+	var count int
+	if err := s.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM jobs WHERE status = ?`, status).Scan(&count); err != nil {
+		return 0, fmt.Errorf("db: count %s jobs: %w", status, err)
+	}
+	return count, nil
+}
+
+func (s *Store) CountPendingCancellableJobs(ctx context.Context) (int, error) {
+	var count int
+	if err := s.DB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM jobs WHERE status = 'queued' AND type IN ('ingest_url', 'folder_move')`).Scan(&count); err != nil {
+		return 0, fmt.Errorf("db: count cancellable jobs: %w", err)
+	}
+	return count, nil
+}
+
+// RequeueAllFailedJobs resets every failed job for another attempt.
+func (s *Store) RequeueAllFailedJobs(ctx context.Context, runAt time.Time) (int64, error) {
+	res, err := s.DB.ExecContext(ctx,
+		`UPDATE jobs SET status = 'queued', attempts = 0, next_attempt_at = ?, error = ''
+		 WHERE status = 'failed'`, runAt.UTC().Format(time.RFC3339))
+	if err != nil {
+		return 0, fmt.Errorf("db: requeue failed jobs: %w", err)
+	}
+	return res.RowsAffected()
+}
+
+// CancelPendingJobs removes cancellable user-requested jobs workers have not
+// claimed yet. Probe and thumbnail integrity jobs are retained: cancelling
+// those would leave uploaded items permanently stuck in processing.
+func (s *Store) CancelPendingJobs(ctx context.Context) (int64, error) {
+	res, err := s.DB.ExecContext(ctx,
+		`DELETE FROM jobs WHERE status = 'queued' AND type IN ('ingest_url', 'folder_move')`)
+	if err != nil {
+		return 0, fmt.Errorf("db: cancel pending jobs: %w", err)
+	}
+	return res.RowsAffected()
+}
+
 // RequeueJob resets a failed job for a fresh set of attempts. It is the admin
 // retry button; the queue's own backoff uses RetryJob instead.
 func (s *Store) RequeueJob(ctx context.Context, id int64, runAt time.Time) error {

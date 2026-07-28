@@ -249,3 +249,75 @@ func TestListFolders(t *testing.T) {
 		t.Errorf("order = %q, %q; want roots alphabetically first", folders[0].Name, folders[1].Name)
 	}
 }
+
+func TestListChildFoldersReturnsOnlyImmediateChildren(t *testing.T) {
+	ctx := context.Background()
+	store := dbtest.New(t)
+	parent := mustFolder(t, store, 0, "parent")
+	child := mustFolder(t, store, parent.ID, "child")
+	mustFolder(t, store, child.ID, "grandchild")
+	mustFolder(t, store, 0, "other")
+
+	children, err := store.ListChildFolders(ctx, parent.ID)
+	if err != nil {
+		t.Fatalf("ListChildFolders: %v", err)
+	}
+	if len(children) != 1 || children[0].ID != child.ID {
+		t.Fatalf("children = %+v, want only %q", children, child.Name)
+	}
+}
+
+func TestFolderPreviewItemsIncludesNestedMedia(t *testing.T) {
+	ctx := context.Background()
+	store := dbtest.New(t)
+	user := mustCreateUser(t, store, "preview-owner", false)
+	parent := mustFolder(t, store, 0, "parent")
+	child := mustFolder(t, store, parent.ID, "child")
+	direct := mustCreateItem(t, store, "direct-preview", user.ID)
+	nested := mustCreateItem(t, store, "nested-preview", user.ID)
+	outside := mustCreateItem(t, store, "outside-preview", user.ID)
+	if err := store.MoveItem(ctx, direct.ID, parent.ID); err != nil {
+		t.Fatalf("move direct item: %v", err)
+	}
+	if err := store.MoveItem(ctx, nested.ID, child.ID); err != nil {
+		t.Fatalf("move nested item: %v", err)
+	}
+
+	items, err := store.FolderPreviewItems(ctx, parent.ID, 4)
+	if err != nil {
+		t.Fatalf("FolderPreviewItems: %v", err)
+	}
+	got := map[string]bool{}
+	for _, item := range items {
+		got[item.ID] = true
+	}
+	if !got[direct.ID] || !got[nested.ID] {
+		t.Errorf("preview IDs = %v, want direct and nested media", got)
+	}
+	if got[outside.ID] {
+		t.Error("folder preview included media outside its subtree")
+	}
+}
+
+func TestMoveFolderItemsBatchMovesInSections(t *testing.T) {
+	ctx := context.Background()
+	store := dbtest.New(t)
+	user := mustCreateUser(t, store, "batch-move-owner", false)
+	source := mustFolder(t, store, 0, "source")
+	destination := mustFolder(t, store, 0, "destination")
+	for _, hash := range []string{"move-a", "move-b", "move-c"} {
+		item := mustCreateItem(t, store, hash, user.ID)
+		if err := store.MoveItem(ctx, item.ID, source.ID); err != nil {
+			t.Fatalf("MoveItem: %v", err)
+		}
+	}
+
+	moved, more, err := store.MoveFolderItemsBatch(ctx, source.ID, destination.ID, 2)
+	if err != nil || moved != 2 || !more {
+		t.Fatalf("first batch = moved %d, more %v, err %v; want 2, true, nil", moved, more, err)
+	}
+	moved, more, err = store.MoveFolderItemsBatch(ctx, source.ID, destination.ID, 2)
+	if err != nil || moved != 1 || more {
+		t.Fatalf("second batch = moved %d, more %v, err %v; want 1, false, nil", moved, more, err)
+	}
+}

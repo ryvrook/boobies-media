@@ -78,6 +78,12 @@
     <div class="admin__section-head" id="job-queue">
       <h2>Job queue</h2>
       <span>Page {{$data.JobPage}} of {{$data.JobPages}}</span>
+      <button type="button" data-action="retry-failed-jobs" {{if not $data.FailedJobs}}disabled{{end}}>
+        Retry failed{{if $data.FailedJobs}} ({{$data.FailedJobs}}){{end}}
+      </button>
+      <button type="button" class="danger" data-action="cancel-pending-jobs" {{if not $data.PendingJobs}}disabled{{end}}>
+        Cancel all pending{{if $data.PendingJobs}} ({{$data.PendingJobs}}){{end}}
+      </button>
     </div>
     <table class="admin__table">
       <thead><tr><th>ID</th><th>Type</th><th>Status</th><th>Attempts</th><th>Error</th><th></th></tr></thead>
