@@ -36,6 +36,7 @@ type browseData struct {
 	NextCursor string
 	Sort       string
 	Query      string
+	MediaType  string
 
 	// Folders is the whole tree, root-first, depth-annotated for indentation.
 	// The rail renders it as plain filter links, so folder navigation works
@@ -178,6 +179,7 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 			NextCursor: next,
 			Sort:       sort,
 			Query:      r.URL.Query().Get("q"),
+			MediaType:  query.MediaType,
 
 			Folders:             buildFolderTree(folders),
 			FolderCards:         folderCards,

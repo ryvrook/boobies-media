@@ -75,5 +75,14 @@ func (s *Store) HandleThumbnailJob(ctx context.Context, job db.Job) error {
 			return fmt.Errorf("media: thumbnail %d for %s: %w", size, item.ID, err)
 		}
 	}
+	// Social crawlers have short timeouts. Generate the compatible video
+	// rendition during normal processing instead of making Discord perform a
+	// full transcode on its first request to /v/{id}.mp4.
+	if isVideo {
+		dst := SocialVideoPath(s.Cfg.ThumbsDir(), item.ContentHash)
+		if err := s.GenerateSocialVideo(ctx, src, dst); err != nil {
+			return fmt.Errorf("media: social video for %s: %w", item.ID, err)
+		}
+	}
 	return nil
 }

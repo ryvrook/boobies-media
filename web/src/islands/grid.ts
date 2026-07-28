@@ -56,6 +56,7 @@ export function mountGrid(root: HTMLElement): void {
   const tag = root.dataset.tag ?? "";
   const uploader = root.dataset.uploader ?? "";
   const q = root.dataset.q ?? "";
+  const mediaType = root.dataset.type ?? "";
   let loading = false;
   let loaded = root.querySelectorAll('[data-role="tile"]').length;
 
@@ -73,6 +74,7 @@ export function mountGrid(root: HTMLElement): void {
       if (tag) params.set("tag", tag);
       if (uploader) params.set("uploader", uploader);
       if (q) params.set("q", q);
+      if (mediaType) params.set("type", mediaType);
       const response = await fetch(`/api/items?${params.toString()}`, {
         headers: { Accept: "application/json" },
       });
@@ -126,6 +128,7 @@ export function mountGrid(root: HTMLElement): void {
     if (tag) params.set("tag", tag);
     if (uploader) params.set("uploader", uploader);
     if (q) params.set("q", q);
+    if (mediaType) params.set("type", mediaType);
     try {
       const response = await fetch(`/api/items?${params.toString()}`, {
         headers: { Accept: "application/json" },

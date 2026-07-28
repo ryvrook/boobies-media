@@ -76,6 +76,7 @@ type ItemQuery struct {
 	Tag        string
 	UploaderID int64
 	Query      string // case-insensitive substring of the title
+	MediaType  string // image, video, animated, or one supported extension
 	Sort       ItemSort
 	Limit      int
 	Cursor     string
@@ -149,6 +150,31 @@ func (s *Store) ListItems(ctx context.Context, q ItemQuery) ([]*Item, string, er
 	if query := strings.TrimSpace(q.Query); query != "" {
 		where = append(where, `lower(i.title) LIKE ? ESCAPE '\'`)
 		args = append(args, "%"+escapeLike(strings.ToLower(query))+"%")
+	}
+	switch strings.ToLower(strings.TrimSpace(q.MediaType)) {
+	case "":
+	case "image":
+		where = append(where, `i.mime LIKE 'image/%'`)
+	case "video":
+		where = append(where, `i.mime LIKE 'video/%'`)
+	case "animated":
+		where = append(where, `i.mime IN ('image/gif', 'image/webp')`)
+	case "gif":
+		where = append(where, `i.mime = 'image/gif'`)
+	case "webp":
+		where = append(where, `i.mime = 'image/webp'`)
+	case "jpg", "jpeg":
+		where = append(where, `i.mime = 'image/jpeg'`)
+	case "png":
+		where = append(where, `i.mime = 'image/png'`)
+	case "avif":
+		where = append(where, `i.mime = 'image/avif'`)
+	case "mp4":
+		where = append(where, `i.mime = 'video/mp4'`)
+	case "webm":
+		where = append(where, `i.mime = 'video/webm'`)
+	default:
+		return nil, "", fmt.Errorf("db: unknown media type %q", q.MediaType)
 	}
 
 	comparison := ">"

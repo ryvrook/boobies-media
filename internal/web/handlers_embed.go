@@ -33,7 +33,7 @@ type embedData struct {
 	// reject the card over.
 	OGImageDimensionsKnown bool
 	IsVideo                bool
-	IsVideoEmbed           bool // an MP4 original or GIF rendition with video OG tags
+	IsVideoEmbed           bool
 	EmbedDimensionsKnown   bool
 	SourceURL              string
 	UploaderName           string
@@ -95,29 +95,16 @@ func (s *Server) handleEmbed(w http.ResponseWriter, r *http.Request) {
 		data.EmbedMediaURL = secure + "/v/" + item.ID + ".mp4"
 		data.EmbedMime = "video/mp4"
 	}
-	// H.264 MP4 originals and the H.264 rendition of a GIF get inline video
-	// cards. Other formats fall back to an image card.
+	// Videos get a compatible H.264 rendition. GIF and WebP stay native image
+	// cards: Discord animates image cards automatically, whereas advertising
+	// them as MP4 forces a play button and makes them feel like videos.
 	if data.IsVideo {
 		data.IsVideoEmbed = true
 		data.EmbedDimensionsKnown = data.Width > 0 && data.Height > 0
-	} else if media.IsGifMime(item.Mime) {
-		data.IsVideoEmbed = true
-		data.EmbedMediaURL = secure + "/g/" + item.ID + ".mp4"
-		data.EmbedMime = "video/mp4"
 	} else {
 		data.OGImageType = item.Mime
 		data.OGImage = data.MediaURL
 		data.OGImageDimensionsKnown = data.Width > 0 && data.Height > 0
-		if data.IsVideo {
-			// A non-mp4 video cannot be an og:image; use its poster
-			// thumbnail instead. That thumbnail is box-fit into 1024x1024
-			// preserving aspect ratio (see media.GenerateThumbnail), so it is
-			// not the same size as the source video: the source's probed
-			// Width/Height must not be declared for it.
-			data.OGImage = data.SocialPreviewURL
-			data.OGImageType = "image/jpeg"
-			data.OGImageDimensionsKnown = false
-		}
 	}
 
 	w.Header().Set("Referrer-Policy", "no-referrer")

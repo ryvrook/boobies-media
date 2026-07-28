@@ -79,10 +79,16 @@ func (s *Server) listItemQuery(r *http.Request) (db.ItemQuery, error) {
 		return db.ItemQuery{}, errors.New("unknown sort value")
 	}
 	query := db.ItemQuery{
-		Sort:   sort,
-		Tag:    params.Get("tag"),
-		Query:  params.Get("q"),
-		Cursor: params.Get("cursor"),
+		Sort:      sort,
+		Tag:       params.Get("tag"),
+		Query:     params.Get("q"),
+		MediaType: params.Get("type"),
+		Cursor:    params.Get("cursor"),
+	}
+	switch query.MediaType {
+	case "", "image", "video", "animated", "gif", "webp", "jpg", "jpeg", "png", "avif", "mp4", "webm":
+	default:
+		return db.ItemQuery{}, errors.New("unknown media type")
 	}
 	// The unfiltered Library view is the root folder, not a global view of
 	// every item. Items filed into a folder are visible from that folder.

@@ -275,6 +275,23 @@ func TestListItemsFilters(t *testing.T) {
 		}
 	})
 
+	t.Run("by file type", func(t *testing.T) {
+		if err := store.SetItemMimeForTest(ctx, tagged.ID, "image/gif"); err != nil {
+			t.Fatal(err)
+		}
+		items, _, err := store.ListItems(ctx, db.ItemQuery{MediaType: "gif"})
+		if err != nil {
+			t.Fatalf("ListItems: %v", err)
+		}
+		if got := titlesOf(items); !sameStrings(got, []string{"Cat Picture"}) {
+			t.Errorf("GIF filter = %v, want [Cat Picture]", got)
+		}
+		items, _, err = store.ListItems(ctx, db.ItemQuery{MediaType: "animated"})
+		if err != nil || len(items) != 1 {
+			t.Errorf("animated filter = %v, %v", titlesOf(items), err)
+		}
+	})
+
 	t.Run("by uploader", func(t *testing.T) {
 		items, _, err := store.ListItems(ctx, db.ItemQuery{UploaderID: bob.ID})
 		if err != nil {

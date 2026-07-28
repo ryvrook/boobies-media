@@ -91,7 +91,7 @@ export function mountBulkSelect(root: HTMLElement): void {
     selectAllBtn.textContent = "Selecting…";
     try {
       const params = new URLSearchParams();
-      for (const key of ["folder", "tag", "uploader", "q", "sort"] as const) {
+      for (const key of ["folder", "tag", "uploader", "q", "sort", "type"] as const) {
         const value = grid.dataset[key];
         if (value) params.set(key, value);
       }

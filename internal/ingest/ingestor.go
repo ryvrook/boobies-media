@@ -118,6 +118,13 @@ func (i *Ingestor) rip(ctx context.Context, job db.Job, payload URLJob, c Classi
 		URL: c.URL, Extractor: c.Extractor, Format: format, CookieFile: cookie, MaxBytes: maxBytes,
 	})
 	if err != nil {
+		if c.FixupXStatusID != "" {
+			if fallbackErr := i.fetchFixupXMedia(ctx, job, payload, c, maxBytes); fallbackErr == nil {
+				return nil
+			} else {
+				return fmt.Errorf("%v; FixupX API also failed: %w", err, fallbackErr)
+			}
+		}
 		return err
 	}
 	defer os.RemoveAll(res.Dir)
@@ -142,6 +149,48 @@ func (i *Ingestor) rip(ctx context.Context, job db.Job, payload URLJob, c Classi
 	}
 	if saved == 0 {
 		return fmt.Errorf("%s downloaded %d file(s), but none is supported media", res.Tool, len(res.Files))
+	}
+	return nil
+}
+
+func (i *Ingestor) fetchFixupXMedia(
+	ctx context.Context,
+	job db.Job,
+	payload URLJob,
+	c Classification,
+	maxBytes int64,
+) error {
+	mediaURLs, err := i.fixupXMediaURLs(ctx, c.FixupXStatusID)
+	if err != nil {
+		return err
+	}
+	saved := 0
+	for _, mediaURL := range mediaURLs {
+		res, err := i.Fetcher.Fetch(ctx, mediaURL, maxBytes)
+		if err != nil {
+			return fmt.Errorf("ingest: download FixupX media: %w", err)
+		}
+		file, openErr := os.Open(res.Path)
+		if openErr != nil {
+			_ = os.Remove(res.Path)
+			return fmt.Errorf("ingest: open FixupX media: %w", openErr)
+		}
+		_, saveErr := i.Media.Save(ctx, media.SaveRequest{
+			Reader: file, Filename: res.Filename, UploaderID: payload.UploaderID,
+			SourceURL: c.URL, JobID: job.ID, MaxBytes: maxBytes,
+		})
+		_ = file.Close()
+		_ = os.Remove(res.Path)
+		if errors.Is(saveErr, media.ErrUnsupportedType) {
+			continue
+		}
+		if saveErr != nil {
+			return saveErr
+		}
+		saved++
+	}
+	if saved == 0 {
+		return errors.New("FixupX found the post, but it contained no supported image or video")
 	}
 	return nil
 }

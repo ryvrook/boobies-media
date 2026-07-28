@@ -8,6 +8,7 @@ import { mountFolders } from "./islands/folders";
 import { mountAdmin } from "./islands/admin";
 import { mountCopy } from "./islands/copy";
 import { mountBulkSelect } from "./islands/bulkselect";
+import { mountScrollTop } from "./islands/scroll-top";
 import { showPendingNotification } from "./notify";
 
 /**
@@ -44,6 +45,7 @@ registerIsland("folders", mountFolders);
 registerIsland("admin", mountAdmin);
 registerIsland("copy", mountCopy);
 registerIsland("bulkselect", mountBulkSelect);
+registerIsland("scroll-top", mountScrollTop);
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {

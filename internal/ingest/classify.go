@@ -45,9 +45,10 @@ var extractorHosts = map[string]string{
 }
 
 type Classification struct {
-	Kind      SourceKind
-	Extractor string
-	URL       string
+	Kind           SourceKind
+	Extractor      string
+	URL            string
+	FixupXStatusID string
 }
 
 func Classify(raw string) (Classification, error) {
@@ -70,11 +71,13 @@ func Classify(raw string) (Classification, error) {
 	}
 	parsed.Fragment = ""
 	if hostMatches(host, "fixupx.com") {
-		normalized, ok := normalizeFixupX(parsed)
+		normalized, statusID, ok := normalizeFixupX(parsed)
 		if !ok {
 			return Classification{}, fmt.Errorf("%w: FixupX URL is not a Twitter status", ErrUnsupportedSource)
 		}
-		return Classification{Kind: KindYtDlp, Extractor: "twitter", URL: normalized}, nil
+		return Classification{
+			Kind: KindYtDlp, Extractor: "twitter", URL: normalized, FixupXStatusID: statusID,
+		}, nil
 	}
 	normalized := parsed.String()
 	for _, candidate := range DiscordCDNHosts {
@@ -94,18 +97,19 @@ func hostMatches(host, want string) bool {
 	return host == want || strings.HasSuffix(host, "."+want)
 }
 
-func normalizeFixupX(parsed *url.URL) (string, bool) {
+func normalizeFixupX(parsed *url.URL) (string, string, bool) {
 	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
 	if len(parts) < 3 || !validTwitterUsername(parts[0]) || parts[1] != "status" || !allDigits(parts[2]) {
-		return "", false
+		return "", "", false
 	}
+	statusID := parts[2]
 	parsed.Scheme = "https"
 	parsed.Host = "x.com"
-	parsed.Path = "/" + parts[0] + "/status/" + parts[2]
+	parsed.Path = "/" + parts[0] + "/status/" + statusID
 	parsed.RawPath = ""
 	parsed.RawQuery = ""
 	parsed.Fragment = ""
-	return parsed.String(), true
+	return parsed.String(), statusID, true
 }
 
 func validTwitterUsername(value string) bool {

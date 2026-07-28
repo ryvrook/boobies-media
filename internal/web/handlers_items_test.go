@@ -144,6 +144,28 @@ func TestListItemsAPIPaginatesWithACursor(t *testing.T) {
 	}
 }
 
+func TestListItemsAPIFiltersByFileType(t *testing.T) {
+	ctx := context.Background()
+	srv, mediaStore, _ := mediaTestServer(t)
+	cookie := authenticate(t, srv, "aiden")
+	user, _ := srv.Store.UserByUsername(ctx, "aiden")
+	items := seedItems(t, mediaStore, user.ID, "still", "animation")
+	if err := srv.Store.SetItemMimeForTest(ctx, items[1].ID, "image/gif"); err != nil {
+		t.Fatal(err)
+	}
+
+	rec := apiRequest(t, srv, cookie, http.MethodGet, "/api/items?type=gif", "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+	if strings.Contains(rec.Body.String(), items[0].ID) || !strings.Contains(rec.Body.String(), items[1].ID) {
+		t.Errorf("GIF-filtered response = %s", rec.Body.String())
+	}
+	if rec := apiRequest(t, srv, cookie, http.MethodGet, "/api/items?type=executable", ""); rec.Code != http.StatusBadRequest {
+		t.Errorf("invalid type status = %d, want 400", rec.Code)
+	}
+}
+
 func TestListItemIDsReturnsFilteredSelectionWithoutMediaPayload(t *testing.T) {
 	ctx := context.Background()
 	srv, mediaStore, _ := mediaTestServer(t)

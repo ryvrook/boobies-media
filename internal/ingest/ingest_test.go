@@ -53,6 +53,9 @@ func TestClassify(t *testing.T) {
 		if tc.url != "" && got.URL != tc.url {
 			t.Errorf("Classify(%q).URL = %q, want %q", tc.raw, got.URL, tc.url)
 		}
+		if strings.Contains(tc.raw, "fixupx.com/") && tc.kind == KindYtDlp && got.FixupXStatusID == "" {
+			t.Errorf("Classify(%q) lost the FixupX status id", tc.raw)
+		}
 	}
 	for _, raw := range []string{
 		"",
@@ -144,6 +147,43 @@ type recordingRunner struct {
 	name string
 	args []string
 	run  func(string, []string) error
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (fn roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return fn(req)
+}
+
+func TestFixupXMediaURLsIncludesImagesAnimationsAndVideos(t *testing.T) {
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.URL.String() != "https://api.fxtwitter.com/status/2081782950207652130" {
+			t.Fatalf("API URL = %q", req.URL)
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body: io.NopCloser(strings.NewReader(`{
+				"code": 200,
+				"message": "OK",
+				"tweet": {"media": {"all": [
+					{"type":"photo","url":"https://pbs.twimg.com/media/photo.jpg?name=orig"},
+					{"type":"gif","url":"https://video.twimg.com/tweet_video/animation.mp4"},
+					{"type":"video","url":"https://video.twimg.com/ext_tw_video/video.mp4"}
+				]}}
+			}`)),
+			Request: req,
+		}, nil
+	})}
+	ingestor := &Ingestor{Fetcher: &Fetcher{Client: client}}
+	urls, err := ingestor.fixupXMediaURLs(context.Background(), "2081782950207652130")
+	if err != nil {
+		t.Fatalf("fixupXMediaURLs: %v", err)
+	}
+	if len(urls) != 3 || !strings.Contains(urls[0], "photo.jpg") ||
+		!strings.Contains(urls[1], "animation.mp4") || !strings.Contains(urls[2], "video.mp4") {
+		t.Errorf("media URLs = %v", urls)
+	}
 }
 
 func (r *recordingRunner) Run(_ context.Context, name string, args ...string) ([]byte, error) {

@@ -5,6 +5,7 @@
 {{$activeTag := $data.ActiveTag}}
 {{$up := $data.ActiveUploader}}
 {{$q := $data.Query}}
+{{$type := $data.MediaType}}
 {{$sort := $data.Sort}}
 <div class="browse">
   <section class="toolbar" role="search">
@@ -22,6 +23,19 @@
         <span class="visually-hidden">Search titles</span>
         <input type="search" name="q" placeholder="Search titles" value="{{$q}}">
       </label>
+      <select name="type" class="toolbar__sort" aria-label="File type">
+        <option value="" {{if eq $type ""}}selected{{end}}>All file types</option>
+        <option value="image" {{if eq $type "image"}}selected{{end}}>All images</option>
+        <option value="animated" {{if eq $type "animated"}}selected{{end}}>GIF &amp; WebP</option>
+        <option value="video" {{if eq $type "video"}}selected{{end}}>All videos</option>
+        <option value="gif" {{if eq $type "gif"}}selected{{end}}>GIF</option>
+        <option value="webp" {{if eq $type "webp"}}selected{{end}}>WebP</option>
+        <option value="jpg" {{if eq $type "jpg"}}selected{{end}}>JPEG</option>
+        <option value="png" {{if eq $type "png"}}selected{{end}}>PNG</option>
+        <option value="avif" {{if eq $type "avif"}}selected{{end}}>AVIF</option>
+        <option value="mp4" {{if eq $type "mp4"}}selected{{end}}>MP4</option>
+        <option value="webm" {{if eq $type "webm"}}selected{{end}}>WebM</option>
+      </select>
       <select name="sort" class="toolbar__sort" aria-label="Sort order">
         <option value="newest" {{if eq $sort "newest"}}selected{{end}}>Newest first</option>
         <option value="oldest" {{if eq $sort "oldest"}}selected{{end}}>Oldest first</option>
@@ -51,11 +65,11 @@
            data-island="folders" data-current="{{if $data.HasActiveFolder}}{{$fid}}{{end}}">
         <div class="rails__heading"><span>Folders</span></div>
         <a class="folder-row{{if not $data.HasActiveFolder}} folder-row--active{{end}}"
-           href="{{queryString "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}">Library</a>
+           href="{{queryString "tag" $activeTag "uploader" $up "q" $q "type" $type "sort" $sort}}">Library</a>
         {{range $data.Folders}}
         <a class="folder-row{{if and $data.HasActiveFolder (eq $data.ActiveFolderID .Folder.ID)}} folder-row--active{{end}}"
            style="padding-left:{{indent .Depth}}px"
-           href="{{queryString "folder" .Folder.ID "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}">{{.Folder.Name}}</a>
+           href="{{queryString "folder" .Folder.ID "tag" $activeTag "uploader" $up "q" $q "type" $type "sort" $sort}}">{{.Folder.Name}}</a>
         {{end}}
       </nav>
 
@@ -66,7 +80,7 @@
           {{range $data.Tags}}
           {{$isActive := eq $activeTag .}}
           <a class="chip{{if $isActive}} chip--active{{end}}"
-             href="{{if $isActive}}{{queryString "folder" $fid "tag" "" "uploader" $up "q" $q "sort" $sort}}{{else}}{{queryString "folder" $fid "tag" . "uploader" $up "q" $q "sort" $sort}}{{end}}">{{.}}{{if $isActive}} <span aria-hidden="true">&#215;</span>{{end}}</a>
+             href="{{if $isActive}}{{queryString "folder" $fid "tag" "" "uploader" $up "q" $q "type" $type "sort" $sort}}{{else}}{{queryString "folder" $fid "tag" . "uploader" $up "q" $q "type" $type "sort" $sort}}{{end}}">{{.}}{{if $isActive}} <span aria-hidden="true">&#215;</span>{{end}}</a>
           {{end}}
         </div>
       </nav>
@@ -79,7 +93,7 @@
           {{range $data.Uploaders}}
           {{$isActive := eq $up .ID}}
           <a class="uploader-row{{if $isActive}} uploader-row--active{{end}}"
-             href="{{if $isActive}}{{queryString "folder" $fid "tag" $activeTag "uploader" 0 "q" $q "sort" $sort}}{{else}}{{queryString "folder" $fid "tag" $activeTag "uploader" .ID "q" $q "sort" $sort}}{{end}}">{{.Username}}</a>
+             href="{{if $isActive}}{{queryString "folder" $fid "tag" $activeTag "uploader" 0 "q" $q "type" $type "sort" $sort}}{{else}}{{queryString "folder" $fid "tag" $activeTag "uploader" .ID "q" $q "type" $type "sort" $sort}}{{end}}">{{.Username}}</a>
           {{end}}
         </div>
       </nav>
@@ -89,25 +103,30 @@
     <main class="browse__main">
       <div class="crumbbar">
         <nav class="crumbbar__path" aria-label="Current folder">
-          <a href="{{queryString "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}">Library</a>
+          <a href="{{queryString "tag" $activeTag "uploader" $up "q" $q "type" $type "sort" $sort}}">Library</a>
           {{range $i, $f := $data.FolderPath}}
           <span aria-hidden="true">/</span>
           {{if eq $i $data.FolderPathLastIndex}}
           <span class="crumbbar__current">{{$f.Name}}</span>
           {{else}}
-          <a href="{{queryString "folder" $f.ID "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}">{{$f.Name}}</a>
+          <a href="{{queryString "folder" $f.ID "tag" $activeTag "uploader" $up "q" $q "type" $type "sort" $sort}}">{{$f.Name}}</a>
           {{end}}
           {{end}}
         </nav>
         <div class="crumbbar__filters">
           {{if $activeTag}}
           <span class="chip">tag: {{$activeTag}}
-            <a class="chip__remove" href="{{queryString "folder" $fid "tag" "" "uploader" $up "q" $q "sort" $sort}}" aria-label="Remove tag filter">&#215;</a>
+            <a class="chip__remove" href="{{queryString "folder" $fid "tag" "" "uploader" $up "q" $q "type" $type "sort" $sort}}" aria-label="Remove tag filter">&#215;</a>
           </span>
           {{end}}
           {{if $q}}
           <span class="chip">q: &#8220;{{$q}}&#8221;
-            <a class="chip__remove" href="{{queryString "folder" $fid "tag" $activeTag "uploader" $up "sort" $sort}}" aria-label="Clear search">&#215;</a>
+            <a class="chip__remove" href="{{queryString "folder" $fid "tag" $activeTag "uploader" $up "type" $type "sort" $sort}}" aria-label="Clear search">&#215;</a>
+          </span>
+          {{end}}
+          {{if $type}}
+          <span class="chip">type: {{$type}}
+            <a class="chip__remove" href="{{queryString "folder" $fid "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}" aria-label="Clear file type filter">&#215;</a>
           </span>
           {{end}}
         </div>
@@ -142,11 +161,11 @@
         <ul class="grid" data-island="grid" role="list"
             data-cursor="{{$data.NextCursor}}" data-sort="{{$sort}}"
             data-tag="{{$activeTag}}" data-folder="{{if $data.HasActiveFolder}}{{$fid}}{{else}}root{{end}}"
-            data-uploader="{{if $up}}{{$up}}{{end}}" data-q="{{$q}}">
+            data-uploader="{{if $up}}{{$up}}{{end}}" data-q="{{$q}}" data-type="{{$type}}">
           {{range $data.FolderCards}}
           <li class="folder-card" role="listitem" data-role="folder-card">
             <a class="folder-card__link"
-               href="{{queryString "folder" .Folder.ID "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}"
+               href="{{queryString "folder" .Folder.ID "tag" $activeTag "uploader" $up "q" $q "type" $type "sort" $sort}}"
                aria-label="Open folder {{.Folder.Name}}">
               <span class="folder-card__preview folder-card__preview--{{len .PreviewIDs}}" aria-hidden="true">
                 {{range .PreviewIDs}}<img data-src="/t/{{.}}?s=320" alt="" width="320" height="320">{{end}}
@@ -252,11 +271,11 @@
     </div>
     <nav class="folder-sheet__list" aria-label="Folders">
       <a class="folder-sheet__row{{if not $data.HasActiveFolder}} folder-sheet__row--active{{end}}"
-         href="{{queryString "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}">Library</a>
+         href="{{queryString "tag" $activeTag "uploader" $up "q" $q "type" $type "sort" $sort}}">Library</a>
       {{range $data.Folders}}
       <a class="folder-sheet__row{{if and $data.HasActiveFolder (eq $data.ActiveFolderID .Folder.ID)}} folder-sheet__row--active{{end}}"
          style="padding-left:{{indent .Depth}}px"
-         href="{{queryString "folder" .Folder.ID "tag" $activeTag "uploader" $up "q" $q "sort" $sort}}">{{.Folder.Name}}</a>
+         href="{{queryString "folder" .Folder.ID "tag" $activeTag "uploader" $up "q" $q "type" $type "sort" $sort}}">{{.Folder.Name}}</a>
       {{end}}
     </nav>
   </div>

@@ -82,12 +82,39 @@ func TestEmbedVideoHasVideoAndPosterTags(t *testing.T) {
 		`<meta property="og:image" content="https://media.example.com/p/` + item.ID + `">`,
 		`<meta property="og:image:type" content="image/jpeg">`,
 		`<meta name="twitter:image" content="https://media.example.com/p/` + item.ID + `">`,
-		`<meta name="twitter:card" content="summary_large_image">`,
+		`<meta name="twitter:card" content="player">`,
+		`<meta name="twitter:player" content="https://media.example.com/v/` + item.ID + `.mp4">`,
 	}
 	for _, tag := range want {
 		if !strings.Contains(body, tag) {
 			t.Errorf("video embed is missing tag:\n%s", tag)
 		}
+	}
+}
+
+func TestEmbedWebPAdvertisesTheOriginalImage(t *testing.T) {
+	ctx := context.Background()
+	srv, mediaStore, _ := mediaTestServer(t)
+	srv.Cfg.BaseURL = "https://media.example.com"
+	item := storeBlob(t, srv, mediaStore, pngTestBytes, "animated.png")
+	if err := srv.Store.SetItemMimeForTest(ctx, item.ID, "image/webp"); err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.Store.SetItemProbe(ctx, item.ID, 900, 1200, 2); err != nil {
+		t.Fatal(err)
+	}
+	body := embedBody(t, srv, item.ID).Body.String()
+	for _, want := range []string{
+		`<meta property="og:image" content="https://media.example.com/m/` + item.ID + `">`,
+		`<meta property="og:image:type" content="image/webp">`,
+		`<meta name="twitter:image:src" content="https://media.example.com/m/` + item.ID + `">`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("WebP embed missing %q", want)
+		}
+	}
+	if strings.Contains(body, "og:video") {
+		t.Error("animated WebP was advertised as a constrained video card")
 	}
 }
 
@@ -120,7 +147,7 @@ func TestEmbedWebmUsesCompatibleVideoRendition(t *testing.T) {
 	}
 }
 
-func TestEmbedGIFAdvertisesMP4AnimationAndJPEGPoster(t *testing.T) {
+func TestEmbedGIFAdvertisesNativeAnimatedImage(t *testing.T) {
 	ctx := context.Background()
 	srv, mediaStore, _ := mediaTestServer(t)
 	srv.Cfg.BaseURL = "https://media.example.com"
@@ -131,17 +158,17 @@ func TestEmbedGIFAdvertisesMP4AnimationAndJPEGPoster(t *testing.T) {
 
 	body := embedBody(t, srv, item.ID).Body.String()
 	for _, tag := range []string{
-		`<meta property="og:type" content="video.other">`,
-		`<meta property="og:video" content="https://media.example.com/g/` + item.ID + `.mp4">`,
-		`<meta property="og:video:secure_url" content="https://media.example.com/g/` + item.ID + `.mp4">`,
-		`<meta property="og:video:type" content="video/mp4">`,
-		`<meta property="og:image" content="https://media.example.com/p/` + item.ID + `">`,
-		`<meta property="og:image:type" content="image/jpeg">`,
-		`<meta name="twitter:image" content="https://media.example.com/p/` + item.ID + `">`,
+		`<meta property="og:type" content="website">`,
+		`<meta property="og:image" content="https://media.example.com/m/` + item.ID + `">`,
+		`<meta property="og:image:type" content="image/gif">`,
+		`<meta name="twitter:image" content="https://media.example.com/m/` + item.ID + `">`,
 	} {
 		if !strings.Contains(body, tag) {
 			t.Errorf("GIF embed is missing animated social tag:\n%s", tag)
 		}
+	}
+	if strings.Contains(body, "og:video") {
+		t.Error("GIF was advertised as a video card, which forces a play button")
 	}
 }
 
