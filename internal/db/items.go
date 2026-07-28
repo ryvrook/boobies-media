@@ -229,6 +229,54 @@ func (s *Store) MoveItem(ctx context.Context, id string, folderID int64) error {
 	return requireRows(res, err, "move item")
 }
 
+// CopyItem creates a second library entry backed by the same immutable blob.
+// Metadata and tags are copied, while the new entry gets its own share ID and
+// belongs to the user who requested the copy. No media bytes are duplicated.
+func (s *Store) CopyItem(ctx context.Context, id string, folderID, uploaderID int64) (*Item, error) {
+	if uploaderID == 0 {
+		return nil, fmt.Errorf("db: copied item uploader must be set")
+	}
+	copyID, err := auth.NewItemID()
+	if err != nil {
+		return nil, fmt.Errorf("db: generate copied item id: %w", err)
+	}
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("db: begin copy item: %w", err)
+	}
+	defer tx.Rollback()
+
+	if folderID != 0 {
+		var exists int
+		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM folders WHERE id = ?`, folderID).Scan(&exists); err != nil {
+			return nil, fmt.Errorf("db: check copy folder %d: %w", folderID, err)
+		}
+		if exists == 0 {
+			return nil, fmt.Errorf("db: folder %d does not exist: %w", folderID, ErrNotFound)
+		}
+	}
+	res, err := tx.ExecContext(ctx, `
+		INSERT INTO items (id, content_hash, title, ext, mime, size, width, height,
+			duration, uploader_id, folder_id, source_url, job_id, share_revoked,
+			deleted_at, created_at)
+		SELECT ?, content_hash, title, ext, mime, size, width, height, duration,
+			?, ?, source_url, NULL, 0, NULL, ?
+		FROM items WHERE id = ? AND deleted_at IS NULL`,
+		copyID, uploaderID, nullableID(folderID), time.Now().UTC().Format(time.RFC3339), id)
+	if err := requireRows(res, err, "copy item"); err != nil {
+		return nil, err
+	}
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO item_tags (item_id, tag_id)
+		SELECT ?, tag_id FROM item_tags WHERE item_id = ?`, copyID, id); err != nil {
+		return nil, fmt.Errorf("db: copy item tags: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("db: commit copy item: %w", err)
+	}
+	return s.ItemByID(ctx, copyID)
+}
+
 // SetItemProbe records what ffprobe found. duration is 0 for stills.
 func (s *Store) SetItemProbe(ctx context.Context, id string, width, height int64, duration float64) error {
 	var durationValue any

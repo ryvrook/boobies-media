@@ -91,7 +91,8 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	query, err := s.listItemQuery(r)
 	if err != nil {
 		// A bad sort (or filter) in a bookmarked URL should not be a hard error.
-		query = db.ItemQuery{}
+		root := int64(0)
+		query = db.ItemQuery{FolderID: &root}
 	}
 	items, next, err := s.Store.ListItems(r.Context(), query)
 	if err != nil {
@@ -180,7 +181,7 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 
 			Folders:             buildFolderTree(folders),
 			FolderCards:         folderCards,
-			HasActiveFolder:     query.FolderID != nil,
+			HasActiveFolder:     r.URL.Query().Get("folder") != "" && activeFolderID != 0,
 			ActiveFolderID:      activeFolderID,
 			FolderPath:          folderPath,
 			FolderPathLastIndex: len(folderPath) - 1,

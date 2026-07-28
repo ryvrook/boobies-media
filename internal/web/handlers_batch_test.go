@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"boobies-media/internal/db"
 )
 
 // batchResult mirrors the JSON shape handleBatchItems returns, used across
@@ -75,6 +77,37 @@ func TestBatchMoveAndTag(t *testing.T) {
 	tags, _ := srv.Store.ItemTags(ctx, items[0].ID)
 	if len(tags) != 1 || tags[0] != "batchtag" {
 		t.Errorf("tags = %v, want [batchtag]", tags)
+	}
+}
+
+func TestBatchCopyCreatesASecondEntryInTheChosenFolder(t *testing.T) {
+	ctx := context.Background()
+	srv, mediaStore, _ := mediaTestServer(t)
+	cookie := authenticate(t, srv, "aiden")
+	user, _ := srv.Store.UserByUsername(ctx, "aiden")
+	items := seedItems(t, mediaStore, user.ID, "source")
+	if err := srv.Store.AddItemTag(ctx, items[0].ID, "copied"); err != nil {
+		t.Fatal(err)
+	}
+	folder, err := srv.Store.CreateFolder(ctx, 0, "Copies")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	body, _ := json.Marshal(map[string]any{
+		"ids": []string{items[0].ID}, "action": "copy", "folder_id": folder.ID,
+	})
+	rec := apiRequest(t, srv, cookie, http.MethodPost, "/api/items/batch", string(body))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+	folderID := folder.ID
+	copies, _, err := srv.Store.ListItems(ctx, db.ItemQuery{FolderID: &folderID})
+	if err != nil || len(copies) != 1 {
+		t.Fatalf("copies = %+v, err=%v", copies, err)
+	}
+	if copies[0].ID == items[0].ID || copies[0].ContentHash != items[0].ContentHash {
+		t.Errorf("copy = %+v, source = %+v", copies[0], items[0])
 	}
 }
 

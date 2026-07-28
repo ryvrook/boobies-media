@@ -181,6 +181,16 @@ func TestToolErrorsAndPublicBoundary(t *testing.T) {
 	if !errors.Is(TranslateToolError("yt-dlp", errors.New("exit"), "ERROR: Sign in to confirm"), ErrNeedsCookies) {
 		t.Error("cookie failure not translated")
 	}
+	noVideo := TranslateToolError("yt-dlp", errors.New("exit"), "ERROR: No video could be found in this tweet")
+	if !errors.Is(noVideo, ErrUnsupportedSource) || !shouldTryGallery("twitter", noVideo) {
+		t.Error("an image-only Twitter post would not fall back to gallery-dl")
+	}
+	if !shouldTryGallery("twitter", errors.New("yt-dlp changed its image-only error wording")) {
+		t.Error("a generic Twitter extractor failure would not fall back to gallery-dl")
+	}
+	if shouldTryGallery("twitter", ErrNeedsCookies) || shouldTryGallery("twitter", ErrDownloadTooLarge) {
+		t.Error("a policy failure incorrectly falls back to gallery-dl")
+	}
 	if _, ok := PublicError("media: ffmpeg leaked /data/private"); ok {
 		t.Error("unmarked internal error was public")
 	}

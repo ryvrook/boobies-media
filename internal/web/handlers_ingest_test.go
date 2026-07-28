@@ -144,6 +144,7 @@ func TestIngestReportsIsGifDistinctFromIsVideo(t *testing.T) {
 			Mime    string `json:"mime"`
 			IsVideo bool   `json:"is_video"`
 			IsGif   bool   `json:"is_gif"`
+			Ready   bool   `json:"ready"`
 		} `json:"item"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
@@ -157,6 +158,9 @@ func TestIngestReportsIsGifDistinctFromIsVideo(t *testing.T) {
 	}
 	if !body.Item.IsGif {
 		t.Error("is_gif = false for a GIF, want true")
+	}
+	if !body.Item.Ready {
+		t.Error("browser-decodable GIF is stuck in processing before its probe runs")
 	}
 }
 

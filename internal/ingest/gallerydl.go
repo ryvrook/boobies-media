@@ -54,5 +54,9 @@ func shouldTryGallery(extractor string, err error) bool {
 	if extractor != "twitter" || errors.Is(err, ErrNeedsCookies) || errors.Is(err, ErrDownloadTooLarge) {
 		return false
 	}
-	return errors.Is(err, media.ErrToolMissing) || errors.Is(err, ErrUnsupportedSource) || errors.Is(err, ErrNothingDownloaded)
+	// Twitter image posts produce several different yt-dlp errors depending
+	// on its version ("no video", "no formats", generic extractor failure).
+	// gallery-dl is the image/gallery path, so every non-policy yt-dlp failure
+	// should fall through to it rather than leaking a video-only error.
+	return true
 }

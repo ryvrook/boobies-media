@@ -184,9 +184,11 @@ func itemJSON(item *db.Item, tags []string, baseURL string) map[string]any {
 		"tags":       tags,
 		"is_video":   media.IsVideoMime(item.Mime),
 		"is_gif":     media.IsAnimatedImage(item.Mime, item.Duration),
-		// ready is false until the probe job fills in the dimensions; the grid
-		// shows a processing placeholder until then.
-		"ready":      item.Width > 0,
+		// Animated GIF/WebP files are browser-decodable even when an older
+		// failed probe left their catalog dimensions empty. Treat them as
+		// usable so existing items do not remain under a permanent processing
+		// overlay; /t/ has a raw-image fallback for the same case.
+		"ready":      item.Width > 0 || media.IsAnimatedImage(item.Mime, item.Duration),
 		"revoked":    item.ShareRevoked,
 		"created_at": item.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		"share_url":  fmt.Sprintf("%s/s/%s", baseURL, item.ID),

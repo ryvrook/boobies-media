@@ -123,7 +123,17 @@
         <button type="button" class="btn btn--quiet" data-action="select-all-loaded">Select all matching</button>
         <span class="bulkbar__count" data-role="count" role="status" aria-live="polite">0 selected</span>
         <div class="bulkbar__spacer"></div>
+        <label class="bulkbar__folder">
+          <span>Destination</span>
+          <select data-role="bulk-folder" aria-label="Destination folder">
+            <option value="0">Library</option>
+            {{range $data.Folders}}
+            <option value="{{.Folder.ID}}">{{.IndentedName}}</option>
+            {{end}}
+          </select>
+        </label>
         <button type="button" class="btn btn--quiet" data-action="bulk-move" disabled>Move</button>
+        <button type="button" class="btn btn--quiet" data-action="bulk-copy" disabled>Copy</button>
         <button type="button" class="btn btn--quiet" data-action="bulk-tag" disabled>Tag</button>
         <button type="button" class="btn btn--danger" data-action="bulk-delete" disabled>Delete</button>
       </div>
@@ -131,7 +141,7 @@
       <div class="grid-scroll">
         <ul class="grid" data-island="grid" role="list"
             data-cursor="{{$data.NextCursor}}" data-sort="{{$sort}}"
-            data-tag="{{$activeTag}}" data-folder="{{if $data.HasActiveFolder}}{{$fid}}{{end}}"
+            data-tag="{{$activeTag}}" data-folder="{{if $data.HasActiveFolder}}{{$fid}}{{else}}root{{end}}"
             data-uploader="{{if $up}}{{$up}}{{end}}" data-q="{{$q}}">
           {{range $data.FolderCards}}
           <li class="folder-card" role="listitem" data-role="folder-card">

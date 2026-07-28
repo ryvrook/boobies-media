@@ -68,6 +68,42 @@ func TestMoveItemRejectsAMissingFolder(t *testing.T) {
 	}
 }
 
+func TestCopyItemSharesBlobAndCopiesMetadataAndTags(t *testing.T) {
+	ctx := context.Background()
+	store := dbtest.New(t)
+	alice := mustCreateUser(t, store, "alice", false)
+	bob := mustCreateUser(t, store, "bob", false)
+	source := mustCreateItem(t, store, "shared-hash", alice.ID)
+	if err := store.SetItemProbe(ctx, source.ID, 1280, 720, 4.5); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.AddItemTag(ctx, source.ID, "favorite"); err != nil {
+		t.Fatal(err)
+	}
+	folder, err := store.CreateFolder(ctx, 0, "Copies")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	copied, err := store.CopyItem(ctx, source.ID, folder.ID, bob.ID)
+	if err != nil {
+		t.Fatalf("CopyItem: %v", err)
+	}
+	if copied.ID == source.ID || copied.ContentHash != source.ContentHash {
+		t.Errorf("copy id/hash = %q/%q, source = %q/%q", copied.ID, copied.ContentHash, source.ID, source.ContentHash)
+	}
+	if copied.FolderID != folder.ID || copied.UploaderID != bob.ID {
+		t.Errorf("copy folder/uploader = %d/%d, want %d/%d", copied.FolderID, copied.UploaderID, folder.ID, bob.ID)
+	}
+	if copied.Width != 1280 || copied.Height != 720 || copied.Duration != 4.5 {
+		t.Errorf("copy probe metadata = %dx%d/%v", copied.Width, copied.Height, copied.Duration)
+	}
+	tags, err := store.ItemTags(ctx, copied.ID)
+	if err != nil || len(tags) != 1 || tags[0] != "favorite" {
+		t.Errorf("copied tags = %v, %v", tags, err)
+	}
+}
+
 func TestSetItemProbe(t *testing.T) {
 	ctx := context.Background()
 	store := dbtest.New(t)

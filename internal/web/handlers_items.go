@@ -84,6 +84,10 @@ func (s *Server) listItemQuery(r *http.Request) (db.ItemQuery, error) {
 		Query:  params.Get("q"),
 		Cursor: params.Get("cursor"),
 	}
+	// The unfiltered Library view is the root folder, not a global view of
+	// every item. Items filed into a folder are visible from that folder.
+	root := int64(0)
+	query.FolderID = &root
 	if raw := params.Get("limit"); raw != "" {
 		limit, err := strconv.Atoi(raw)
 		if err != nil {
@@ -94,7 +98,6 @@ func (s *Server) listItemQuery(r *http.Request) (db.ItemQuery, error) {
 	if raw := params.Get("folder"); raw != "" {
 		// "root" selects unfiled items; a numeric id selects that folder.
 		if raw == "root" {
-			root := int64(0)
 			query.FolderID = &root
 		} else {
 			id, err := strconv.ParseInt(raw, 10, 64)

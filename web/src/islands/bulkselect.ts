@@ -29,12 +29,14 @@ interface BatchResult {
 export function mountBulkSelect(root: HTMLElement): void {
   const toggle = root.querySelector<HTMLInputElement>('[data-action="select-mode"]');
   const count = root.querySelector<HTMLElement>('[data-role="count"]');
+  const folderSelect = root.querySelector<HTMLSelectElement>('[data-role="bulk-folder"]');
   const moveBtn = root.querySelector<HTMLButtonElement>('[data-action="bulk-move"]');
+  const copyBtn = root.querySelector<HTMLButtonElement>('[data-action="bulk-copy"]');
   const tagBtn = root.querySelector<HTMLButtonElement>('[data-action="bulk-tag"]');
   const deleteBtn = root.querySelector<HTMLButtonElement>('[data-action="bulk-delete"]');
   const selectAllBtn = root.querySelector<HTMLButtonElement>('[data-action="select-all-loaded"]');
   const grid = document.querySelector<HTMLElement>('[data-island="grid"]');
-  if (!toggle || !count || !moveBtn || !tagBtn || !deleteBtn || !grid) return;
+  if (!toggle || !count || !folderSelect || !moveBtn || !copyBtn || !tagBtn || !deleteBtn || !grid) return;
 
   root.removeAttribute("hidden");
 
@@ -54,7 +56,7 @@ export function mountBulkSelect(root: HTMLElement): void {
 
   function refresh(message?: string): void {
     count!.textContent = message ?? `${selected.size} selected`;
-    for (const button of [moveBtn!, tagBtn!, deleteBtn!]) button.disabled = selected.size === 0;
+    for (const button of [moveBtn!, copyBtn!, tagBtn!, deleteBtn!]) button.disabled = selected.size === 0;
   }
 
   function setSelected(id: string, on: boolean): void {
@@ -176,10 +178,12 @@ export function mountBulkSelect(root: HTMLElement): void {
       if (!tile) continue;
       if (payload.action === "delete") {
         tile.remove();
-      } else if (payload.action === "move" && currentFolder !== "" && String(payload.folder_id) !== currentFolder) {
-        // Only drop the tile when the current view is filtered to one
-        // folder and the item just left it; an unfiltered ("Library")
-        // view still shows every folder, so the tile stays.
+      } else if (
+        payload.action === "move" &&
+        String(payload.folder_id) !== (currentFolder === "root" ? "0" : currentFolder)
+      ) {
+        // A move always removes the source tile when it leaves the folder
+        // currently on screen, including the Library root.
         tile.remove();
       }
       selected.delete(id);
@@ -205,14 +209,11 @@ export function mountBulkSelect(root: HTMLElement): void {
   });
   moveBtn.addEventListener("click", () => {
     if (selected.size === 0) return;
-    const raw = window.prompt("Move to folder id (0 for the library root)");
-    if (raw === null) return;
-    const folderId = Number(raw);
-    if (!Number.isInteger(folderId) || folderId < 0) {
-      notify("Folder id must be a whole number.", "error");
-      return;
-    }
-    void apply({ action: "move", folder_id: folderId });
+    void apply({ action: "move", folder_id: Number(folderSelect.value) });
+  });
+  copyBtn.addEventListener("click", () => {
+    if (selected.size === 0) return;
+    void apply({ action: "copy", folder_id: Number(folderSelect.value) });
   });
   tagBtn.addEventListener("click", () => {
     if (selected.size === 0) return;

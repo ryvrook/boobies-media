@@ -117,6 +117,33 @@ func TestBrowseRendersTheFirstPageOfItems(t *testing.T) {
 	}
 }
 
+func TestLibraryRootDoesNotRenderItemsFiledIntoFolders(t *testing.T) {
+	ctx := context.Background()
+	srv, mediaStore, _ := mediaTestServer(t)
+	cookie := authenticate(t, srv, "aiden")
+	user, _ := srv.Store.UserByUsername(ctx, "aiden")
+	items := seedItems(t, mediaStore, user.ID, "root item", "filed item")
+	folder, err := srv.Store.CreateFolder(ctx, 0, "Filed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := srv.Store.MoveItem(ctx, items[1].ID, folder.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(cookie)
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	body := rec.Body.String()
+	if !strings.Contains(body, `data-item-id="`+items[0].ID+`"`) {
+		t.Error("root item is missing from Library")
+	}
+	if strings.Contains(body, `data-item-id="`+items[1].ID+`"`) {
+		t.Error("filed item is still rendered as a Library tile")
+	}
+}
+
 func TestBrowseRendersImmediateFolderCardsWithPreviewCollage(t *testing.T) {
 	ctx := context.Background()
 	srv, mediaStore, _ := mediaTestServer(t)

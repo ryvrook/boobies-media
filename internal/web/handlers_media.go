@@ -65,7 +65,8 @@ func (s *Server) handleThumbnail(w http.ResponseWriter, r *http.Request) {
 	}
 	path := media.ThumbPath(s.Cfg.ThumbsDir(), item.ContentHash, size)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		if item.Width <= 0 || item.Height <= 0 {
+		animatedImage := media.IsAnimatedImage(item.Mime, item.Duration)
+		if (item.Width <= 0 || item.Height <= 0) && !animatedImage {
 			http.NotFound(w, r)
 			return
 		}
@@ -75,6 +76,15 @@ func (s *Server) handleThumbnail(w http.ResponseWriter, r *http.Request) {
 		}
 		src := media.BlobPath(s.Cfg.FilesDir(), item.ContentHash)
 		if err := s.Media.GenerateThumbnail(r.Context(), src, path, size, media.IsVideoMime(item.Mime), item.Duration); err != nil {
+			if animatedImage {
+				// Existing animated files may predate the native WebP/GIF
+				// probe and thumbnail fallbacks. The original is already a
+				// safe, browser-served image, so use it as the poster instead
+				// of returning a broken thumbnail forever.
+				filename := media.SanitizeFilename(item.Title + "." + item.Ext)
+				s.serveFile(w, r, src, item.Mime, filename)
+				return
+			}
 			s.serverError(w, r, err)
 			return
 		}

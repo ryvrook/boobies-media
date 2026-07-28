@@ -107,7 +107,8 @@ func TranslateToolError(tool string, cause error, output string) error {
 		strings.Contains(lower, "login"), strings.Contains(lower, "requires authentication"),
 		strings.Contains(lower, "private video"), strings.Contains(lower, "age-restricted"):
 		return fmt.Errorf("%w: %s could not access this without an exported cookie file", ErrNeedsCookies, tool)
-	case strings.Contains(lower, "unsupported url"), strings.Contains(lower, "no video formats found"), strings.Contains(lower, "unable to extract"):
+	case strings.Contains(lower, "unsupported url"), strings.Contains(lower, "no video formats found"),
+		strings.Contains(lower, "no video could be found"), strings.Contains(lower, "unable to extract"):
 		return fmt.Errorf("%w: %s does not know how to download this link", ErrUnsupportedSource, tool)
 	}
 	detail := cause.Error()

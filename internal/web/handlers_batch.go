@@ -23,8 +23,8 @@ type batchItemsBody struct {
 	Tag      string   `json:"tag"`
 }
 
-// handleBatchItems serves POST /api/items/batch: one action (delete, move or
-// tag) applied to many items in a single request.
+// handleBatchItems serves POST /api/items/batch: one action (delete, move,
+// copy or tag) applied to many items in a single request.
 //
 // Atomicity: this is deliberately per-item, not all-or-nothing. Each id runs
 // through the same already-tested per-item store method
@@ -66,7 +66,7 @@ func (s *Server) handleBatchItems(w http.ResponseWriter, r *http.Request) {
 	}
 	tag := body.Tag
 	switch body.Action {
-	case "delete", "move":
+	case "delete", "move", "copy":
 	case "tag":
 		// Validated once, up front, for the whole batch (one tag value is
 		// shared by every id in the request) so a malformed tag is reported
@@ -80,7 +80,7 @@ func (s *Server) handleBatchItems(w http.ResponseWriter, r *http.Request) {
 		}
 		tag = normalized
 	default:
-		writeJSONError(w, http.StatusBadRequest, "bad_action", "action must be delete, move or tag")
+		writeJSONError(w, http.StatusBadRequest, "bad_action", "action must be delete, move, copy or tag")
 		return
 	}
 
@@ -97,6 +97,8 @@ func (s *Server) handleBatchItems(w http.ResponseWriter, r *http.Request) {
 			err = s.Store.SoftDeleteItem(ctx, id, user)
 		case "move":
 			err = s.Store.MoveItem(ctx, id, body.FolderID)
+		case "copy":
+			_, err = s.Store.CopyItem(ctx, id, body.FolderID, user.ID)
 		case "tag":
 			err = s.Store.AddItemTag(ctx, id, tag)
 		}
