@@ -27,6 +27,8 @@ ENV PATH="/opt/media-tools/bin:${PATH}" \
 
 WORKDIR /app
 COPY --from=go-builder /out/server /app/server
+COPY scripts/bm-user /usr/local/bin/bm-user
+RUN chmod 0755 /usr/local/bin/bm-user
 RUN mkdir -p /data
 
 VOLUME ["/data"]

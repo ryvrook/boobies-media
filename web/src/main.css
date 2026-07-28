@@ -90,6 +90,9 @@ a:hover { color: var(--accent); }
 }
 
 .topbar__brand a {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 13px;
@@ -98,6 +101,12 @@ a:hover { color: var(--accent); }
   color: var(--text);
 }
 .topbar__brand a:hover { color: var(--text); }
+.topbar__brand img {
+  display: block;
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
 
 .topbar__spacer { flex: 1; }
 
@@ -265,7 +274,23 @@ button { cursor: pointer; }
   flex-direction: column;
   gap: 24px;
 }
-.login__brand { display: flex; flex-direction: column; gap: 6px; }
+.login__brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.login__brand > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.login__logo {
+  display: block;
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  object-fit: contain;
+}
 .login__brand h1 {
   margin: 0;
   font-family: var(--font-display);

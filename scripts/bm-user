@@ -1,0 +1,36 @@
+#!/bin/sh
+set -eu
+
+usage() {
+  cat >&2 <<'EOF'
+Usage:
+  bm-user regular <username> [display name]
+  bm-user admin <username> [display name]
+  bm-user list
+EOF
+  exit 2
+}
+
+[ "$#" -ge 1 ] || usage
+
+case "$1" in
+  list)
+    [ "$#" -eq 1 ] || usage
+    exec /app/server user list
+    ;;
+  regular|admin)
+    role="$1"
+    [ "$#" -ge 2 ] || usage
+    username="$2"
+    shift 2
+    display_name="${*:-$username}"
+
+    if [ "$role" = "admin" ]; then
+      exec /app/server user add "$username" --display-name "$display_name" --admin
+    fi
+    exec /app/server user add "$username" --display-name "$display_name"
+    ;;
+  *)
+    usage
+    ;;
+esac

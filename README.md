@@ -56,6 +56,17 @@ an API key once:
 ./bin/server user add admin --display-name "Administrator" --admin
 ```
 
+The production container also includes a shorter `bm-user` helper for use in
+the Dokploy terminal:
+
+```bash
+bm-user regular aiden "Aiden Smith"
+bm-user admin jane "Jane Admin"
+bm-user list
+```
+
+The create commands prompt for a password and print the new API key once.
+
 Start the local server:
 
 ```bash
@@ -202,7 +213,7 @@ If the deployment is unhealthy, check:
 After the first deployment, open the Dokploy application terminal and run:
 
 ```bash
-/app/server user add admin --display-name "Administrator" --admin
+bm-user admin admin "Administrator"
 ```
 
 The command uses `BM_DATA_DIR=/data`, so it modifies the live persistent

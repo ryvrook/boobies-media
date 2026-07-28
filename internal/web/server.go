@@ -126,6 +126,9 @@ func New(cfg *config.Config, store *db.Store, depStatus []deps.Status, opts ...O
 	r.Get("/robots.txt", func(w http.ResponseWriter, req *http.Request) {
 		http.ServeFileFS(w, req, staticFS, "robots.txt")
 	})
+	r.Get("/favicon.ico", func(w http.ResponseWriter, req *http.Request) {
+		http.ServeFileFS(w, req, staticFS, "favicon.ico")
+	})
 	r.Get("/login", s.handleLoginForm)
 	r.Post("/login", s.handleLoginSubmit)
 	r.Post("/logout", s.handleLogout)

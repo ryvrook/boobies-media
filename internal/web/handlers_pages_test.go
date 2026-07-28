@@ -57,6 +57,19 @@ func TestBrowseRequiresAuthentication(t *testing.T) {
 	}
 }
 
+func TestFaviconIsPublic(t *testing.T) {
+	srv := testServer(t)
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/favicon.ico", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if body := rec.Body.Bytes(); len(body) < 4 || string(body[:4]) != "\x00\x00\x01\x00" {
+		t.Error("favicon response is not an ICO file")
+	}
+}
+
 func TestUnknownPathIs404ForSignedInUser(t *testing.T) {
 	srv := testServer(t)
 	rec := httptest.NewRecorder()

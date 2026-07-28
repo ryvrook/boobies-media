@@ -50,6 +50,12 @@ func TestLoginPageShowsErrorAndCarriesNext(t *testing.T) {
 	if strings.Contains(out, "Sign out") {
 		t.Error("login page rendered the signed-in header for an anonymous visitor")
 	}
+	if !strings.Contains(out, `/static/brand/booby-logo.webp`) {
+		t.Error("login page does not render the booby logo")
+	}
+	if !strings.Contains(out, `rel="icon" href="/favicon.ico"`) {
+		t.Error("login page does not link the favicon")
+	}
 }
 
 func TestBrowsePageShowsDisplayName(t *testing.T) {
@@ -66,6 +72,9 @@ func TestBrowsePageShowsDisplayName(t *testing.T) {
 	}
 	if !strings.Contains(out, "Sign out") {
 		t.Error("browse page does not render the signed-in header")
+	}
+	if !strings.Contains(out, `/static/brand/booby-logo.webp`) {
+		t.Error("browse page does not render the booby logo in the topbar")
 	}
 }
 

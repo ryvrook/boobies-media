@@ -4,8 +4,11 @@
   <div class="login-page__center">
     <section class="login">
       <div class="login__brand">
-        <h1>boobies&middot;media</h1>
-        <p>Private archive. Accounts are made by hand.</p>
+        <img class="login__logo" src="/static/brand/booby-logo.webp" width="96" height="96" alt="">
+        <div>
+          <h1>boobies&middot;media</h1>
+          <p>Private archive. Accounts are made by hand.</p>
+        </div>
       </div>
       {{if .Error}}<p class="error-banner" role="alert">{{.Error}}</p>{{end}}
       <form method="post" action="/login" novalidate>

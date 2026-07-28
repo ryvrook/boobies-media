@@ -4,13 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{template "title" .}} · boobies·media</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="stylesheet" href="/static/dist/main.css">
 <script type="module" src="/static/dist/main.js" defer></script>
 </head>
 <body>
 {{if .User}}
 <header class="topbar">
-  <div class="topbar__brand"><a href="/">boobies&middot;media</a></div>
+  <div class="topbar__brand">
+    <a href="/" aria-label="boobies media home">
+      <img src="/static/brand/booby-logo.webp" width="34" height="34" alt="">
+      <span>boobies&middot;media</span>
+    </a>
+  </div>
   <div class="topbar__spacer"></div>
   <div class="topbar__user">
     <span>{{.User.DisplayName}}</span>
