@@ -4,6 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{template "title" .}} · boobies·media</title>
+<meta name="description" content="Your flock’s private media library for sharing photos, GIFs, and videos.">
+{{if .SiteURL}}
+<link rel="canonical" href="{{.SiteURL}}/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="boobies-media">
+<meta property="og:title" content="boobies-media">
+<meta property="og:description" content="Your flock’s private media library for sharing photos, GIFs, and videos.">
+<meta property="og:url" content="{{.SiteURL}}/">
+<meta property="og:image" content="{{.SiteURL}}/static/brand/social-card.jpg">
+<meta property="og:image:secure_url" content="{{.SiteURL}}/static/brand/social-card.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="boobies-media — your flock’s private media library">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="boobies-media">
+<meta name="twitter:description" content="Your flock’s private media library for sharing photos, GIFs, and videos.">
+<meta name="twitter:image" content="{{.SiteURL}}/static/brand/social-card.jpg">
+<meta name="twitter:image:alt" content="boobies-media — your flock’s private media library">
+{{end}}
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="stylesheet" href="/static/dist/main.css">
 <script type="module" src="/static/dist/main.js" defer></script>

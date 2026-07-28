@@ -496,16 +496,12 @@ main.browse__main {
   padding: 24px;
 }
 
-/* Justified contact-sheet grid: each tile's flex-grow is its aspect ratio
-   (width/height), set via --aspect in the markup. With flex-wrap enabled,
-   the browser distributes free space per wrapped line independently, so
-   every completed row fills edge to edge in proportion to each photo's real
-   aspect ratio: the same effect the design's hand-laid-out rows show, with
-   no per-row layout math needed client-side. The one trade-off: a trailing,
-   not-yet-full row (the common case while more pages are still loading)
-   still stretches to fill the width, since CSS cannot tell "this line is
-   short because it is incomplete" from "this line is short on purpose".
-   Accepted as the standard cost of the pure-CSS technique. */
+/* Justified contact-sheet grid: each tile's basis is its natural width at the
+   selected row height, and flex-grow is its aspect ratio. Completed lines
+   still distribute their remaining width proportionally. The zero-height
+   after-item below absorbs spare space on the final incomplete line, keeping
+   one or two images near their natural size instead of stretching them across
+   the entire viewport. */
 .grid {
   display: flex;
   flex-wrap: wrap;
@@ -513,6 +509,11 @@ main.browse__main {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+.grid::after {
+  content: "";
+  flex: 999999 1 0;
+  height: 0;
 }
 
 .grid__sentinel { height: 1px; }
@@ -555,7 +556,7 @@ main.browse__main {
 .tile {
   --aspect: 1;
   position: relative;
-  flex: var(--aspect) 1 0;
+  flex: var(--aspect) 1 calc(var(--aspect) * var(--row-h));
   height: var(--row-h);
   min-width: 90px;
   background: var(--raised);

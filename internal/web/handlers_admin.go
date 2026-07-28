@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/http"
+	"strings"
 
 	"boobies-media/internal/db"
 	"boobies-media/internal/deps"
@@ -92,8 +93,9 @@ func (s *Server) handleAdmin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := PageData{
-		Title: "Admin",
-		User:  user,
+		Title:   "Admin",
+		SiteURL: strings.TrimRight(s.Cfg.BaseURL, "/"),
+		User:    user,
 		Data: adminData{
 			Users:      rows,
 			Settings:   settings,

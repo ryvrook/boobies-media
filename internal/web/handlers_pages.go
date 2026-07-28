@@ -144,8 +144,9 @@ func (s *Server) handleBrowse(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := PageData{
-		Title: "Browse",
-		User:  user,
+		Title:   "Browse",
+		SiteURL: strings.TrimRight(s.Cfg.BaseURL, "/"),
+		User:    user,
 		Data: browseData{
 			Items:      payload,
 			NextCursor: next,

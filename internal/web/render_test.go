@@ -58,6 +58,31 @@ func TestLoginPageShowsErrorAndCarriesNext(t *testing.T) {
 	}
 }
 
+func TestLoginPageHasSiteSharingMetadata(t *testing.T) {
+	r, err := NewRenderer()
+	if err != nil {
+		t.Fatalf("NewRenderer: %v", err)
+	}
+	out, err := r.RenderString("login", PageData{SiteURL: "https://booby.ryvrook.com"})
+	if err != nil {
+		t.Fatalf("RenderString: %v", err)
+	}
+	for _, want := range []string{
+		`<meta property="og:title" content="boobies-media">`,
+		`<meta property="og:description" content="Your flock’s private media library for sharing photos, GIFs, and videos.">`,
+		`<meta property="og:url" content="https://booby.ryvrook.com/">`,
+		`<meta property="og:image" content="https://booby.ryvrook.com/static/brand/social-card.jpg">`,
+		`<meta property="og:image:width" content="1200">`,
+		`<meta property="og:image:height" content="630">`,
+		`<meta name="twitter:card" content="summary_large_image">`,
+		`<meta name="twitter:image" content="https://booby.ryvrook.com/static/brand/social-card.jpg">`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("login page is missing sharing metadata:\n%s", want)
+		}
+	}
+}
+
 func TestBrowsePageShowsDisplayName(t *testing.T) {
 	r, err := NewRenderer()
 	if err != nil {

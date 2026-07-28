@@ -18,11 +18,12 @@ import (
 // PageData is the value every page template receives. The base layout reads
 // User; individual pages read the rest.
 type PageData struct {
-	Title string
-	User  *db.User
-	Error string
-	Next  string
-	Data  any
+	Title   string
+	SiteURL string
+	User    *db.User
+	Error   string
+	Next    string
+	Data    any
 }
 
 // Renderer holds one parsed template set per page.

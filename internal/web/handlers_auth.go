@@ -100,7 +100,12 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) renderLogin(w http.ResponseWriter, r *http.Request, status int, message, next string) {
-	data := PageData{Title: "Sign in", Error: message, Next: next}
+	data := PageData{
+		Title:   "Sign in",
+		SiteURL: strings.TrimRight(s.Cfg.BaseURL, "/"),
+		Error:   message,
+		Next:    next,
+	}
 	if err := s.Renderer.Render(w, status, "login", data); err != nil {
 		s.serverError(w, r, err)
 	}
