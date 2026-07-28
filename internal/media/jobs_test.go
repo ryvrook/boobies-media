@@ -215,6 +215,36 @@ printf 'RIFF__' > "$last"`,
 	}
 }
 
+func TestGenerateSocialPreviewUsesBoundedJPEG(t *testing.T) {
+	ctx := context.Background()
+	store, _, _, cfg := newMediaStore(t)
+	argsFile := cfg.TmpDir() + "/social-ffmpeg-args.txt"
+	media.StubTools(t, map[string]string{
+		"ffmpeg": `#!/bin/sh
+echo "$@" >> "` + argsFile + `"
+for last in "$@"; do :; done
+printf '\377\330\377' > "$last"`,
+	})
+
+	dst := cfg.TmpDir() + "/social.jpg"
+	if err := store.GenerateSocialPreview(ctx, "/src.gif", dst, false, 0); err != nil {
+		t.Fatalf("GenerateSocialPreview: %v", err)
+	}
+	recorded, err := os.ReadFile(argsFile)
+	if err != nil {
+		t.Fatalf("ffmpeg was not invoked: %v", err)
+	}
+	args := string(recorded)
+	for _, want := range []string{"-frames:v 1", "mjpeg", "min(1024,iw)", "-q:v 3"} {
+		if !strings.Contains(args, want) {
+			t.Errorf("social preview args are missing %q\ngot: %s", want, args)
+		}
+	}
+	if strings.Contains(args, "-ss") {
+		t.Error("a GIF social preview sought into the animation instead of using frame one")
+	}
+}
+
 // TestHandleThumbnailJobWritesAPosterForAGif pins down the diagnosis behind
 // the "GIF previews are broken" report: nothing in this pipeline is actually
 // broken. IsVideoMime("image/gif") is false, so HandleThumbnailJob routes a

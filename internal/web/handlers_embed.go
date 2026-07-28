@@ -10,16 +10,17 @@ import (
 // embedData is the template model for /s/{id}. Every URL is absolute so a
 // crawler that only reads the <head> resolves them without a base.
 type embedData struct {
-	Title          string
-	ShareURL       string
-	MediaURL       string
-	SecureMediaURL string
-	PosterURL      string
-	OGImage        string
-	OGImageType    string
-	Mime           string
-	Width          int64
-	Height         int64
+	Title            string
+	ShareURL         string
+	MediaURL         string
+	SecureMediaURL   string
+	PosterURL        string
+	SocialPreviewURL string
+	OGImage          string
+	OGImageType      string
+	Mime             string
+	Width            int64
+	Height           int64
 	// OGImageDimensionsKnown gates og:image:width/height. It is true only
 	// when OGImage points at the original media (whose probed Width/Height
 	// are its real dimensions), never when OGImage is a poster thumbnail:
@@ -72,18 +73,19 @@ func (s *Server) handleEmbed(w http.ResponseWriter, r *http.Request) {
 		secure = "https://" + strings.TrimPrefix(secure, "http://")
 	}
 	data := embedData{
-		Title:           item.Title,
-		ShareURL:        base + "/s/" + item.ID,
-		MediaURL:        base + "/m/" + item.ID,
-		SecureMediaURL:  secure + "/m/" + item.ID,
-		PosterURL:       base + "/t/" + item.ID + "?s=1024",
-		Mime:            item.Mime,
-		Width:           item.Width,
-		Height:          item.Height,
-		IsVideo:         media.IsVideoMime(item.Mime),
-		SourceURL:       item.SourceURL,
-		UploaderName:    uploaderName,
-		UploaderInitial: initial,
+		Title:            item.Title,
+		ShareURL:         base + "/s/" + item.ID,
+		MediaURL:         base + "/m/" + item.ID,
+		SecureMediaURL:   secure + "/m/" + item.ID,
+		PosterURL:        base + "/t/" + item.ID + "?s=1024",
+		SocialPreviewURL: base + "/p/" + item.ID,
+		Mime:             item.Mime,
+		Width:            item.Width,
+		Height:           item.Height,
+		IsVideo:          media.IsVideoMime(item.Mime),
+		SourceURL:        item.SourceURL,
+		UploaderName:     uploaderName,
+		UploaderInitial:  initial,
 	}
 	// Only H.264 MP4 gets a video card; everything else (webm, images) gets an
 	// image card. yt-dlp downloads are constrained to mp4, so this is the norm.
@@ -93,14 +95,14 @@ func (s *Server) handleEmbed(w http.ResponseWriter, r *http.Request) {
 		data.OGImageType = item.Mime
 		data.OGImage = data.MediaURL
 		data.OGImageDimensionsKnown = data.Width > 0 && data.Height > 0
-		if data.IsVideo {
+		if data.IsVideo || media.IsGifMime(item.Mime) {
 			// A non-mp4 video cannot be an og:image; use its poster
 			// thumbnail instead. That thumbnail is box-fit into 1024x1024
 			// preserving aspect ratio (see media.GenerateThumbnail), so it is
 			// not the same size as the source video: the source's probed
 			// Width/Height must not be declared for it.
-			data.OGImage = data.PosterURL
-			data.OGImageType = "image/webp"
+			data.OGImage = data.SocialPreviewURL
+			data.OGImageType = "image/jpeg"
 			data.OGImageDimensionsKnown = false
 		}
 	}

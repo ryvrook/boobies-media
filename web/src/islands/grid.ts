@@ -6,6 +6,12 @@
 
 import { mountTilePreview } from "./preview";
 import { aspectRatio, formatBytes, formatDuration } from "../format";
+import { pollItemUntilReady } from "../processing";
+import { notify } from "../notify";
+
+const GRID_SIZE_KEY = "boobies-media:grid-size";
+const GRID_SIZE_MIN = 120;
+const GRID_SIZE_MAX = 360;
 
 export interface ApiItem {
   id: string;
@@ -36,6 +42,7 @@ interface ItemsPage {
 }
 
 export function mountGrid(root: HTMLElement): void {
+  mountGridSizeControl();
   const status = document.querySelector<HTMLElement>('[data-role="grid-status"]');
   const count = document.querySelector<HTMLElement>('[data-role="grid-count"]');
   let cursor = root.dataset.cursor ?? "";
@@ -89,6 +96,9 @@ export function mountGrid(root: HTMLElement): void {
   // hover/focus previews the same way freshly-rendered tiles get wired below.
   for (const tile of root.querySelectorAll<HTMLElement>('[data-role="tile"]')) {
     mountTilePreview(tile);
+    if (tile.classList.contains("tile--processing") && tile.dataset.itemId) {
+      watchProcessingTile(tile, tile.dataset.itemId);
+    }
   }
 
   // A sentinel below the grid is cheaper and less jittery than scroll maths.
@@ -103,6 +113,40 @@ export function mountGrid(root: HTMLElement): void {
     { rootMargin: "600px" },
   );
   observer.observe(sentinel);
+}
+
+function mountGridSizeControl(): void {
+  const input = document.querySelector<HTMLInputElement>('[data-action="grid-size"]');
+  const output = document.querySelector<HTMLOutputElement>('[data-role="grid-size-value"]');
+  if (!input || !output) return;
+
+  let saved = Number.NaN;
+  try {
+    saved = Number(window.localStorage.getItem(GRID_SIZE_KEY));
+  } catch {
+    // Storage is optional; the control still works for this page view.
+  }
+  const fallback = window.matchMedia("(max-width: 720px)").matches ? 140 : 240;
+  const initial = Number.isFinite(saved) && saved >= GRID_SIZE_MIN && saved <= GRID_SIZE_MAX ? saved : fallback;
+
+  function apply(value: number): void {
+    const clamped = Math.min(GRID_SIZE_MAX, Math.max(GRID_SIZE_MIN, value));
+    document.documentElement.style.setProperty("--row-h", `${clamped}px`);
+    input!.value = String(clamped);
+    output!.value = `${clamped}px`;
+  }
+
+  apply(initial);
+  input.addEventListener("input", () => apply(Number(input.value)));
+  input.addEventListener("change", () => {
+    const value = Number(input.value);
+    try {
+      window.localStorage.setItem(GRID_SIZE_KEY, String(value));
+    } catch {
+      // Keep the applied value even when it cannot be persisted.
+    }
+    notify(`Grid size set to ${value}px.`);
+  });
 }
 
 export function renderTile(item: ApiItem): HTMLElement {
@@ -168,6 +212,7 @@ export function renderTile(item: ApiItem): HTMLElement {
     processing.append(label, meter, name);
     button.appendChild(processing);
     li.append(button);
+    watchProcessingTile(li, item.id);
     return li;
   }
 
@@ -202,4 +247,11 @@ export function renderTile(item: ApiItem): HTMLElement {
   li.append(button);
   mountTilePreview(li);
   return li;
+}
+
+function watchProcessingTile(tile: HTMLElement, itemID: string): void {
+  void pollItemUntilReady(itemID).then((item) => {
+    if (!item || !tile.isConnected) return;
+    tile.replaceWith(renderTile(item));
+  });
 }

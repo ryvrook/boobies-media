@@ -8,6 +8,7 @@ import { mountFolders } from "./islands/folders";
 import { mountAdmin } from "./islands/admin";
 import { mountCopy } from "./islands/copy";
 import { mountBulkSelect } from "./islands/bulkselect";
+import { showPendingNotification } from "./notify";
 
 /**
  * Island registry. Each island is a small behaviour attached to an element
@@ -45,7 +46,11 @@ registerIsland("copy", mountCopy);
 registerIsland("bulkselect", mountBulkSelect);
 
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => mountIslands());
+  document.addEventListener("DOMContentLoaded", () => {
+    showPendingNotification();
+    mountIslands();
+  });
 } else {
+  showPendingNotification();
   mountIslands();
 }

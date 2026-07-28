@@ -7,6 +7,7 @@ import type { ApiItem } from "./grid";
 import { stopActivePreview } from "./preview";
 import { formatBytes, formatDuration } from "../format";
 import { apiSend } from "../request";
+import { notify } from "../notify";
 
 /**
  * Maps a numeric uploader id to its username. The /api/items item shape only
@@ -219,6 +220,7 @@ export function mountLightbox(root: HTMLElement): void {
       return;
     }
     renderTags(result.body.tags);
+    notify(`Tag “${tag}” removed.`);
   }
 
   tagForm.addEventListener("submit", async (event) => {
@@ -242,6 +244,7 @@ export function mountLightbox(root: HTMLElement): void {
     renderTags(result.body.tags);
     if (field) field.value = "";
     clearError();
+    notify(`Tag “${value}” added.`);
   });
 
   // Commit a rename on blur or Enter.
@@ -266,6 +269,8 @@ export function mountLightbox(root: HTMLElement): void {
     current = item;
     const caption = document.querySelector(`[data-item-id="${CSS.escape(item.id)}"] .tile__cap-title`);
     if (caption) caption.textContent = item.title;
+    clearError();
+    notify("Title saved.");
   }
 
   titleInput.addEventListener("blur", () => void saveTitle());
@@ -312,11 +317,17 @@ export function mountLightbox(root: HTMLElement): void {
     current = result.body.item;
     clearError();
     pruneMovedTile(result.body.item);
+    notify("Item moved.");
   });
 
   root.querySelector('[data-action="copy"]')?.addEventListener("click", async () => {
     if (!current) return;
-    await navigator.clipboard.writeText(current.share_url);
+    try {
+      await navigator.clipboard.writeText(current.share_url);
+      notify("Share link copied.");
+    } catch {
+      notify("Could not copy the share link.", "error");
+    }
   });
 
   root.querySelector('[data-action="delete"]')?.addEventListener("click", async () => {
@@ -338,6 +349,7 @@ export function mountLightbox(root: HTMLElement): void {
     }
     document.querySelector(`[data-item-id="${CSS.escape(id)}"]`)?.remove();
     close();
+    notify("Item moved to trash.");
   });
 
   for (const button of root.querySelectorAll('[data-action="close"]')) {

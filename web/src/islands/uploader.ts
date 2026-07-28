@@ -9,6 +9,7 @@
  */
 
 import { renderTile, type ApiItem } from "./grid";
+import { notify } from "../notify";
 
 interface UploadStatus {
   upload_id: string;
@@ -357,6 +358,7 @@ export function mountUploader(root: HTMLElement): void {
           status: "done",
           statusText: `done (${job.items.length} item${job.items.length === 1 ? "" : "s"})`,
         });
+        notify(`${job.items.length} item${job.items.length === 1 ? "" : "s"} added.`);
         refreshSummary();
         window.setTimeout(() => { row.remove(); refreshSummary(); }, 4000);
         return;
@@ -550,6 +552,7 @@ export function mountUploader(root: HTMLElement): void {
       // Show it immediately, before the probe and thumbnail jobs finish.
       grid?.querySelector('[data-role="empty"]')?.remove();
       grid?.prepend(renderTile(result.item));
+      notify(`“${result.item.title}” added.`);
       window.setTimeout(() => { row.remove(); refreshSummary(); }, 4000);
     } catch (err) {
       if (controller.signal.aborted) {

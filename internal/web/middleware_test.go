@@ -48,7 +48,7 @@ func TestIsPublicPath(t *testing.T) {
 	public := []string{
 		"/login", "/robots.txt", "/favicon.ico",
 		"/static/dist/main.js", "/static/dist/main.css",
-		"/s/abc12345", "/m/abc12345", "/t/abc12345",
+		"/s/abc12345", "/m/abc12345", "/t/abc12345", "/p/abc12345",
 	}
 	for _, p := range public {
 		if !IsPublicPath(p) {
@@ -59,7 +59,7 @@ func TestIsPublicPath(t *testing.T) {
 		"/", "/admin", "/api/items", "/upload", "/logout",
 		// Near-misses must not leak: a prefix check that forgot the trailing
 		// slash would open all of these.
-		"/s", "/m", "/t", "/statics", "/static-evil/x", "/sneaky", "/login-bypass",
+		"/s", "/m", "/t", "/p", "/statics", "/static-evil/x", "/sneaky", "/login-bypass",
 	}
 	for _, p := range private {
 		if IsPublicPath(p) {

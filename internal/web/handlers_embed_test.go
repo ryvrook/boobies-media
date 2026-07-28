@@ -79,7 +79,9 @@ func TestEmbedVideoHasVideoAndPosterTags(t *testing.T) {
 		`<meta property="og:video:type" content="video/mp4">`,
 		`<meta property="og:video:width" content="1280">`,
 		`<meta property="og:video:height" content="720">`,
-		`<meta property="og:image" content="https://media.example.com/t/` + item.ID + `?s=1024">`,
+		`<meta property="og:image" content="https://media.example.com/p/` + item.ID + `">`,
+		`<meta property="og:image:type" content="image/jpeg">`,
+		`<meta name="twitter:image" content="https://media.example.com/p/` + item.ID + `">`,
 		`<meta name="twitter:card" content="summary_large_image">`,
 	}
 	for _, tag := range want {
@@ -110,11 +112,38 @@ func TestEmbedWebmFallsBackToImageCard(t *testing.T) {
 	if strings.Contains(body, "og:video") {
 		t.Error("a webm item emitted og:video tags; it must fall back to an image card")
 	}
-	if !strings.Contains(body, `<meta property="og:image" content="https://media.example.com/t/`+item.ID+`?s=1024">`) {
+	if !strings.Contains(body, `<meta property="og:image" content="https://media.example.com/p/`+item.ID+`">`) {
 		t.Error("the webm fallback did not emit a poster og:image")
 	}
 	if strings.Contains(body, `property="og:image:width"`) || strings.Contains(body, `property="og:image:height"`) {
 		t.Error("the webm fallback declared a poster width/height; the poster is a box-fit thumbnail whose actual size differs from the probed source dimensions, so no dimension claim may be made for it")
+	}
+}
+
+func TestEmbedGIFFallsBackToJPEGCard(t *testing.T) {
+	ctx := context.Background()
+	srv, mediaStore, _ := mediaTestServer(t)
+	srv.Cfg.BaseURL = "https://media.example.com"
+	item := storeBlob(t, srv, mediaStore, gifTestBytes, "party.gif")
+	if err := srv.Store.SetItemProbe(ctx, item.ID, 800, 600, 0); err != nil {
+		t.Fatalf("SetItemProbe: %v", err)
+	}
+
+	body := embedBody(t, srv, item.ID).Body.String()
+	for _, tag := range []string{
+		`<meta property="og:image" content="https://media.example.com/p/` + item.ID + `">`,
+		`<meta property="og:image:type" content="image/jpeg">`,
+		`<meta name="twitter:image" content="https://media.example.com/p/` + item.ID + `">`,
+	} {
+		if !strings.Contains(body, tag) {
+			t.Errorf("GIF embed is missing crawler-compatible tag:\n%s", tag)
+		}
+	}
+	if strings.Contains(body, `<meta property="og:image" content="https://media.example.com/m/`+item.ID+`">`) {
+		t.Error("GIF embed points crawlers at the full animated GIF instead of its bounded JPEG poster")
+	}
+	if strings.Contains(body, `property="og:image:width"`) || strings.Contains(body, `property="og:image:height"`) {
+		t.Error("GIF poster declared the original animation dimensions")
 	}
 }
 

@@ -30,6 +30,12 @@
         <option value="uploader" {{if eq $sort "uploader"}}selected{{end}}>By uploader</option>
       </select>
       <button type="submit" class="btn btn--quiet">Apply</button>
+      <label class="grid-size">
+        <span>Tile height</span>
+        <input type="range" min="120" max="360" step="20" value="240"
+               data-action="grid-size" aria-label="Grid tile height">
+        <output data-role="grid-size-value">240px</output>
+      </label>
     </form>
     <div class="toolbar__spacer"></div>
     <button type="button" class="btn uploader-trigger" data-action="toggle-uploader"

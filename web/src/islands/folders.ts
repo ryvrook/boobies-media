@@ -24,6 +24,7 @@
 
 import { buildModal, el } from "./admin";
 import { apiSend } from "../request";
+import { notifyAfterReload } from "../notify";
 
 interface ApiFolder {
   id: number;
@@ -115,7 +116,8 @@ export function mountFolders(root: HTMLElement): void {
    * one of its ancestors, since children cascade) would reload onto a
    * folder that no longer exists, so that case drops the filter instead.
    */
-  function reload(deleted?: number, byId?: Map<number, ApiFolder>): void {
+  function reload(message: string, deleted?: number, byId?: Map<number, ApiFolder>): void {
+    notifyAfterReload(message);
     const activeId = Number(current);
     if (deleted !== undefined && byId && current !== "" && isWithin(activeId, deleted, byId)) {
       const url = new URL(window.location.href);
@@ -167,7 +169,7 @@ export function mountFolders(root: HTMLElement): void {
       if (!name) return;
       clearError();
       void send("/api/folders", "POST", { name, parent_id: Number(parent.value) }).then((ok) => {
-        if (ok) reload();
+        if (ok) reload(`Folder “${name}” created.`);
       });
     });
     return form;
@@ -187,7 +189,7 @@ export function mountFolders(root: HTMLElement): void {
     move.addEventListener("change", () => {
       clearError();
       void send(`/api/folders/${folder.id}`, "PATCH", { parent_id: Number(move.value) }).then((ok) => {
-        if (ok) reload();
+        if (ok) reload(`Folder “${folder.name}” moved.`);
         else move.value = String(folder.parent_id);
       });
     });
@@ -202,7 +204,7 @@ export function mountFolders(root: HTMLElement): void {
       if (!trimmed || trimmed === folder.name) return;
       clearError();
       void send(`/api/folders/${folder.id}`, "PATCH", { name: trimmed }).then((ok) => {
-        if (ok) reload();
+        if (ok) reload(`Folder renamed to “${trimmed}”.`);
       });
     });
 
@@ -213,7 +215,7 @@ export function mountFolders(root: HTMLElement): void {
       if (!window.confirm(`Delete "${folder.name}"? Subfolders go with it and anything inside moves back to the library.`)) return;
       clearError();
       void send(`/api/folders/${folder.id}`, "DELETE").then((ok) => {
-        if (ok) reload(folder.id, byId);
+        if (ok) reload(`Folder “${folder.name}” deleted.`, folder.id, byId);
       });
     });
 

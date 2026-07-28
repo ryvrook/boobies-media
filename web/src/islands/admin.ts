@@ -9,6 +9,7 @@
  */
 
 import { bindCopyButton } from "./copy";
+import { notify, notifyAfterReload } from "../notify";
 
 /** Tiny element-builder to keep the dialog-construction code below terse. */
 export function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] {
@@ -110,9 +111,13 @@ export function mountAdmin(root: HTMLElement): void {
     const detail = (await response.json().catch(() => null)) as { error?: string } | null;
     return detail?.error ?? `failed (${response.status})`;
   }
-  async function reloadOrAlert(response: Response): Promise<void> {
-    if (response.ok) window.location.reload();
-    else window.alert(await failMessage(response));
+  async function reloadOrNotify(response: Response, message: string): Promise<void> {
+    if (response.ok) {
+      notifyAfterReload(message);
+      window.location.reload();
+    } else {
+      notify(await failMessage(response), "error");
+    }
   }
 
   // The one-time API key reveal. Body content is cleared on every close path
@@ -164,7 +169,9 @@ export function mountAdmin(root: HTMLElement): void {
     });
     purge.addEventListener("click", () => {
       purgeModal.close();
-      void send(`/api/admin/items/${encodeURIComponent(id)}/purge`, "DELETE").then(reloadOrAlert);
+      void send(`/api/admin/items/${encodeURIComponent(id)}/purge`, "DELETE").then((response) =>
+        reloadOrNotify(response, "Item permanently deleted."),
+      );
     });
 
     purgeModal.body.append(text, field, actions);
@@ -182,20 +189,26 @@ export function mountAdmin(root: HTMLElement): void {
       case "toggle-admin":
         if (userRow) {
           const makeAdmin = userRow.dataset.isAdmin !== "true";
-          void send(`/api/admin/users/${userRow.dataset.userId}`, "PATCH", { is_admin: makeAdmin }).then(reloadOrAlert);
+          void send(`/api/admin/users/${userRow.dataset.userId}`, "PATCH", { is_admin: makeAdmin }).then((response) =>
+            reloadOrNotify(response, makeAdmin ? "Administrator access granted." : "Administrator access removed."),
+          );
         }
         break;
       case "reset-password": {
         if (!userRow) break;
         const password = window.prompt("New password");
-        if (password) void send(`/api/admin/users/${userRow.dataset.userId}/password`, "POST", { password }).then(reloadOrAlert);
+        if (password) {
+          void send(`/api/admin/users/${userRow.dataset.userId}/password`, "POST", { password }).then((response) =>
+            reloadOrNotify(response, "Password reset."),
+          );
+        }
         break;
       }
       case "rotate-key":
         if (userRow) {
           void send(`/api/admin/users/${userRow.dataset.userId}/apikey`, "POST").then(async (response) => {
             if (!response.ok) {
-              window.alert(await failMessage(response));
+              notify(await failMessage(response), "error");
               return;
             }
             const { api_key } = (await response.json()) as { api_key: string };
@@ -205,14 +218,24 @@ export function mountAdmin(root: HTMLElement): void {
         break;
       case "delete-user":
         if (userRow && window.confirm("Delete this user? This cannot be undone.")) {
-          void send(`/api/admin/users/${userRow.dataset.userId}`, "DELETE").then(reloadOrAlert);
+          void send(`/api/admin/users/${userRow.dataset.userId}`, "DELETE").then((response) =>
+            reloadOrNotify(response, "User deleted."),
+          );
         }
         break;
       case "retry-job":
-        if (jobRow) void send(`/api/jobs/${jobRow.dataset.jobId}/retry`, "POST").then(reloadOrAlert);
+        if (jobRow) {
+          void send(`/api/jobs/${jobRow.dataset.jobId}/retry`, "POST").then((response) =>
+            reloadOrNotify(response, "Job queued for retry."),
+          );
+        }
         break;
       case "restore-item":
-        if (itemRow) void send(`/api/admin/items/${itemRow.dataset.itemId}/restore`, "POST").then(reloadOrAlert);
+        if (itemRow) {
+          void send(`/api/admin/items/${itemRow.dataset.itemId}/restore`, "POST").then((response) =>
+            reloadOrNotify(response, "Item restored."),
+          );
+        }
         break;
       case "purge-item":
         if (itemRow) {
@@ -238,6 +261,7 @@ export function mountAdmin(root: HTMLElement): void {
     }
     const { job_id } = (await response.json()) as { job_id: number };
     testResult.textContent = `${extractor}: queued as job ${job_id}. Watch the job queue below.`;
+    notify(`${extractor} test queued.`);
   }
 
   root.querySelector<HTMLFormElement>('[data-role="create-user"]')?.addEventListener("submit", async (event) => {
@@ -252,12 +276,13 @@ export function mountAdmin(root: HTMLElement): void {
       is_admin: data.get("is_admin") === "on",
     });
     if (!response.ok) {
-      window.alert(await failMessage(response));
+      notify(await failMessage(response), "error");
       return;
     }
     const { api_key } = (await response.json()) as { api_key: string };
     form.reset();
     showKey(api_key, `Created "${username}". Refresh to see them listed.`);
+    notify(`User “${username}” created.`);
   });
 
   const settingsForm = root.querySelector<HTMLFormElement>('[data-role="settings"]');
@@ -299,7 +324,7 @@ export function mountAdmin(root: HTMLElement): void {
       lower.startsWith(node.name.toLowerCase()),
     );
     if (!input) {
-      window.alert(message);
+      notify(message, "error");
       return;
     }
     const errId = `${input.name}-err`;
@@ -318,7 +343,7 @@ export function mountAdmin(root: HTMLElement): void {
     const response = await send("/api/admin/settings", "POST", payload);
     if (response.ok) {
       clearSettingsErrors();
-      window.alert("Settings saved.");
+      notify("Settings saved.");
     } else {
       applySettingsError(await failMessage(response));
     }

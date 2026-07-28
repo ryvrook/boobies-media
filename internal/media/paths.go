@@ -48,6 +48,14 @@ func ThumbPath(thumbsDir, hash string, size int) string {
 	return filepath.Join(shardDir(thumbsDir, hash), fmt.Sprintf("%s_%d.webp", hash, size))
 }
 
+// SocialPreviewPath is a crawler-compatible JPEG poster. Unlike the WebP
+// thumbnails used by the app, JPEG is accepted consistently by social-card
+// scrapers. The poster is generated lazily so existing libraries gain it
+// without a migration.
+func SocialPreviewPath(thumbsDir, hash string) string {
+	return filepath.Join(shardDir(thumbsDir, hash), hash+"_social.jpg")
+}
+
 // maxFilenameLength caps the name echoed in Content-Disposition.
 const maxFilenameLength = 120
 

@@ -10,6 +10,7 @@
  * reveal) can reuse the same clipboard-plus-announcement behaviour instead
  * of duplicating it.
  */
+import { notify } from "../notify";
 
 export function mountCopy(root: HTMLElement): void {
   const button = root.querySelector<HTMLButtonElement>('[data-action="copy"]');
@@ -38,11 +39,13 @@ export function bindCopyButton(button: HTMLButtonElement, getText: () => string,
       await navigator.clipboard.writeText(getText());
       button.textContent = doneLabel;
       status.textContent = "Copied to clipboard.";
+      notify("Link copied to clipboard.");
       window.setTimeout(() => {
         button.textContent = label;
       }, 2000);
     } catch {
       status.textContent = "Could not copy automatically. Select and copy the text manually.";
+      notify("Could not copy automatically.", "error");
     }
   });
 }

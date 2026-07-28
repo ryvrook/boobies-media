@@ -18,6 +18,7 @@
  */
 
 import { stopActivePreview } from "./preview";
+import { notify } from "../notify";
 
 interface BatchResult {
   applied: number;
@@ -118,7 +119,7 @@ export function mountBulkSelect(root: HTMLElement): void {
     });
     if (!response.ok) {
       const detail = (await response.json().catch(() => null)) as { error?: string } | null;
-      window.alert(detail?.error ?? "That bulk action failed.");
+      notify(detail?.error ?? "That bulk action failed.", "error");
       return;
     }
     const result = (await response.json()) as BatchResult;
@@ -142,6 +143,7 @@ export function mountBulkSelect(root: HTMLElement): void {
         ? `${result.applied} item(s) updated.`
         : `${result.applied} item(s) updated, ${result.failed.length} could not be updated.`;
     refresh(summary);
+    notify(summary, result.failed.length === 0 ? "success" : "info");
     // Give the aria-live announcement above a moment to be read before the
     // count reverts to the live "N selected" state.
     window.setTimeout(() => refresh(), 3000);
@@ -158,7 +160,7 @@ export function mountBulkSelect(root: HTMLElement): void {
     if (raw === null) return;
     const folderId = Number(raw);
     if (!Number.isInteger(folderId) || folderId < 0) {
-      window.alert("Folder id must be a whole number.");
+      notify("Folder id must be a whole number.", "error");
       return;
     }
     void apply({ action: "move", folder_id: folderId });

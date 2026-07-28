@@ -68,6 +68,36 @@ func (s *Server) handleThumbnail(w http.ResponseWriter, r *http.Request) {
 	s.serveFile(w, r, path, "image/webp", filename)
 }
 
+// handleSocialPreview serves a broadly compatible JPEG card image. It is
+// generated on first request so media uploaded before this feature works
+// without re-running every historical thumbnail job.
+func (s *Server) handleSocialPreview(w http.ResponseWriter, r *http.Request) {
+	if !s.checkPublicRateLimit(w, r) {
+		return
+	}
+	item, ok := s.publicItem(w, r)
+	if !ok {
+		return
+	}
+	if s.Media == nil {
+		http.Error(w, "media storage is not configured", http.StatusServiceUnavailable)
+		return
+	}
+	dst := media.SocialPreviewPath(s.Cfg.ThumbsDir(), item.ContentHash)
+	if _, err := os.Stat(dst); os.IsNotExist(err) {
+		src := media.BlobPath(s.Cfg.FilesDir(), item.ContentHash)
+		if err := s.Media.GenerateSocialPreview(r.Context(), src, dst, media.IsVideoMime(item.Mime), item.Duration); err != nil {
+			s.serverError(w, r, err)
+			return
+		}
+	} else if err != nil {
+		s.serverError(w, r, err)
+		return
+	}
+	filename := media.SanitizeFilename(item.Title + ".jpg")
+	s.serveFile(w, r, dst, "image/jpeg", filename)
+}
+
 // checkPublicRateLimit enforces the public-route rate limit. It must be
 // called first, before any other per-request work (including query
 // validation), so that every request against /m/ and /t/ spends budget
