@@ -103,7 +103,11 @@ func (s *Server) handleEmbed(w http.ResponseWriter, r *http.Request) {
 		data.EmbedDimensionsKnown = data.Width > 0 && data.Height > 0
 	} else {
 		data.OGImageType = item.Mime
-		data.OGImage = data.MediaURL
+		data.OGImage = secure + "/i/" + item.ID + "." + media.ExtForMime(item.Mime)
+		if item.Mime == "image/webp" {
+			// Discord documents this query hint for requesting animated WebP.
+			data.OGImage += "?animated=true"
+		}
 		data.OGImageDimensionsKnown = data.Width > 0 && data.Height > 0
 	}
 

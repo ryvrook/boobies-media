@@ -48,7 +48,8 @@ func TestIsPublicPath(t *testing.T) {
 	public := []string{
 		"/login", "/robots.txt", "/favicon.ico",
 		"/static/dist/main.js", "/static/dist/main.css",
-		"/s/abc12345", "/m/abc12345", "/t/abc12345", "/p/abc12345", "/g/abc12345.mp4",
+		"/s/abc12345", "/m/abc12345", "/i/abc12345.gif", "/t/abc12345", "/p/abc12345",
+		"/g/abc12345.mp4", "/v/abc12345.mp4",
 	}
 	for _, p := range public {
 		if !IsPublicPath(p) {
@@ -59,7 +60,7 @@ func TestIsPublicPath(t *testing.T) {
 		"/", "/admin", "/api/items", "/upload", "/logout",
 		// Near-misses must not leak: a prefix check that forgot the trailing
 		// slash would open all of these.
-		"/s", "/m", "/t", "/p", "/g", "/statics", "/static-evil/x", "/sneaky", "/login-bypass",
+		"/s", "/m", "/i", "/t", "/p", "/g", "/v", "/statics", "/static-evil/x", "/sneaky", "/login-bypass",
 	}
 	for _, p := range private {
 		if IsPublicPath(p) {
@@ -111,7 +112,7 @@ func TestPublicPrefixesBypassTheGate(t *testing.T) {
 	srv := testServer(t)
 	// No /s/, /m/ or /t/ handler exists until a later plan, so the gate
 	// passing the request through shows up as a 404, never a 302 or 401.
-	for _, p := range []string{"/s/abc12345", "/m/abc12345", "/t/abc12345"} {
+	for _, p := range []string{"/s/abc12345", "/m/abc12345", "/i/abc12345.gif", "/t/abc12345", "/v/abc12345.mp4"} {
 		rec := httptest.NewRecorder()
 		srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, p, nil))
 		if rec.Code == http.StatusFound || rec.Code == http.StatusUnauthorized {

@@ -41,7 +41,7 @@ func IsPublicPath(p string) bool {
 	case "/login", "/robots.txt", "/favicon.ico":
 		return true
 	}
-	for _, prefix := range []string{"/s/", "/m/", "/t/", "/p/", "/g/", "/static/"} {
+	for _, prefix := range []string{"/s/", "/m/", "/i/", "/t/", "/p/", "/g/", "/v/", "/static/"} {
 		if strings.HasPrefix(p, prefix) {
 			return true
 		}

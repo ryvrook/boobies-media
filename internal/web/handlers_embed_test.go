@@ -44,7 +44,7 @@ func TestEmbedImageHasEveryOpenGraphTag(t *testing.T) {
 		`<meta property="og:type" content="website">`,
 		`<meta property="og:title" content="Kitten">`,
 		`<meta property="og:url" content="https://media.example.com/s/` + item.ID + `">`,
-		`<meta property="og:image" content="https://media.example.com/m/` + item.ID + `">`,
+		`<meta property="og:image" content="https://media.example.com/i/` + item.ID + `.png">`,
 		`<meta property="og:image:width" content="640">`,
 		`<meta property="og:image:height" content="480">`,
 		`<meta property="og:image:type" content="image/png">`,
@@ -105,9 +105,9 @@ func TestEmbedWebPAdvertisesTheOriginalImage(t *testing.T) {
 	}
 	body := embedBody(t, srv, item.ID).Body.String()
 	for _, want := range []string{
-		`<meta property="og:image" content="https://media.example.com/m/` + item.ID + `">`,
+		`<meta property="og:image" content="https://media.example.com/i/` + item.ID + `.webp?animated=true">`,
 		`<meta property="og:image:type" content="image/webp">`,
-		`<meta name="twitter:image:src" content="https://media.example.com/m/` + item.ID + `">`,
+		`<meta name="twitter:image:src" content="https://media.example.com/i/` + item.ID + `.webp?animated=true">`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("WebP embed missing %q", want)
@@ -159,9 +159,9 @@ func TestEmbedGIFAdvertisesNativeAnimatedImage(t *testing.T) {
 	body := embedBody(t, srv, item.ID).Body.String()
 	for _, tag := range []string{
 		`<meta property="og:type" content="website">`,
-		`<meta property="og:image" content="https://media.example.com/m/` + item.ID + `">`,
+		`<meta property="og:image" content="https://media.example.com/i/` + item.ID + `.gif">`,
 		`<meta property="og:image:type" content="image/gif">`,
-		`<meta name="twitter:image" content="https://media.example.com/m/` + item.ID + `">`,
+		`<meta name="twitter:image" content="https://media.example.com/i/` + item.ID + `.gif">`,
 	} {
 		if !strings.Contains(body, tag) {
 			t.Errorf("GIF embed is missing animated social tag:\n%s", tag)

@@ -265,6 +265,30 @@ func TestThumbnailDefaultsToTheSmallSize(t *testing.T) {
 	}
 }
 
+func TestExtensionBearingEmbedImageIsPublicAndSupportsHead(t *testing.T) {
+	srv, mediaStore, _ := mediaTestServer(t)
+	item := storeBlob(t, srv, mediaStore, gifTestBytes, "party.gif")
+
+	req := httptest.NewRequest(http.MethodHead, "/i/"+item.ID+".gif", nil)
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (Location %q)", rec.Code, rec.Header().Get("Location"))
+	}
+	if got := rec.Header().Get("Content-Type"); got != "image/gif" {
+		t.Errorf("Content-Type = %q, want image/gif", got)
+	}
+	if rec.Body.Len() != 0 {
+		t.Error("HEAD response unexpectedly included media bytes")
+	}
+
+	rec = httptest.NewRecorder()
+	srv.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/i/"+item.ID+".png", nil))
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("wrong extension status = %d, want 404", rec.Code)
+	}
+}
+
 func TestThumbnailRejectsSizesOutsideTheAllowlist(t *testing.T) {
 	srv, mediaStore, _ := mediaTestServer(t)
 	item := storeBlob(t, srv, mediaStore, testMP4, "clip.mp4")

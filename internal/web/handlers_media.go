@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 
@@ -28,6 +29,28 @@ func (s *Server) handleRawMedia(w http.ResponseWriter, r *http.Request) {
 	}
 	path := media.BlobPath(s.Cfg.FilesDir(), item.ContentHash)
 	filename := media.SanitizeFilename(item.Title + "." + item.Ext)
+	s.serveFile(w, r, path, item.Mime, filename)
+}
+
+// handleEmbedImage serves an image at an extension-bearing URL. Discord's
+// media proxy uses both Content-Type and the URL suffix when deciding whether
+// an external image is animated, so /i/{id}.gif|webp is used by share-card
+// metadata while /m/{id} remains the stable download URL.
+func (s *Server) handleEmbedImage(w http.ResponseWriter, r *http.Request) {
+	if !s.checkPublicRateLimit(w, r) {
+		return
+	}
+	item, ok := s.publicItem(w, r)
+	if !ok {
+		return
+	}
+	canonicalExt := media.ExtForMime(item.Mime)
+	if !strings.HasPrefix(item.Mime, "image/") || chi.URLParam(r, "ext") != canonicalExt {
+		http.NotFound(w, r)
+		return
+	}
+	path := media.BlobPath(s.Cfg.FilesDir(), item.ContentHash)
+	filename := media.SanitizeFilename(item.Title + "." + canonicalExt)
 	s.serveFile(w, r, path, item.Mime, filename)
 }
 

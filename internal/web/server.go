@@ -118,6 +118,10 @@ func New(cfg *config.Config, store *db.Store, depStatus []deps.Status, opts ...O
 
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
+	// Social crawlers commonly probe media with HEAD before fetching it.
+	// Route those requests through the corresponding GET handler so Discord
+	// sees the real content type, length and range support instead of 405.
+	r.Use(middleware.GetHead)
 	// CleanPath must run before the gate so "/s/../admin" is normalised to
 	// "/admin" and evaluated as the private path it really is.
 	r.Use(middleware.CleanPath)
@@ -137,6 +141,7 @@ func New(cfg *config.Config, store *db.Store, depStatus []deps.Status, opts ...O
 	r.Post("/logout", s.handleLogout)
 	r.Get("/", s.handleBrowse)
 	r.Get("/m/{id}", s.handleRawMedia)
+	r.Get("/i/{id}.{ext}", s.handleEmbedImage)
 	r.Get("/t/{id}", s.handleThumbnail)
 	r.Get("/p/{id}", s.handleSocialPreview)
 	r.Get("/g/{id}.mp4", s.handleSocialAnimation)
