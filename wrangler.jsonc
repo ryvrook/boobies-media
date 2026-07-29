@@ -1,0 +1,11 @@
+{
+  // Static landing page only. There is no Worker script and no build step:
+  // the media server itself is a Go binary deployed separately.
+  "name": "boobies-media-site",
+  "compatibility_date": "2026-07-29",
+  "assets": {
+    "directory": "./site",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  }
+}
