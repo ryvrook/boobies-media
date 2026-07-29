@@ -60,7 +60,7 @@ The production container also includes a shorter `bm-user` helper for use in
 the Dokploy terminal:
 
 ```bash
-bm-user regular aiden "Aiden Smith"
+bm-user regular walter "Walter White"
 bm-user admin jane "Jane Admin"
 bm-user list
 ```
