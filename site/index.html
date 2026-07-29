@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>boobies·media &amp; booby-bot — a private media library and the Discord bot that feeds it</title>
+<meta name="description" content="A self-hosted media library for a small group, and a Discord bot that files attachments and links into it. Go, SQLite, one data directory. MIT licensed.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b0b0c'/%3E%3Ccircle cx='16' cy='13' r='6' fill='%23ededef'/%3E%3Crect x='13' y='19' width='2.5' height='7' fill='%235bc8ff'/%3E%3Crect x='17' y='19' width='2.5' height='7' fill='%235bc8ff'/%3E%3C/svg%3E">
+<link rel="canonical" href="https://boobies.ryvrook.com/">
+<meta name="theme-color" content="#5bc8ff">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="boobies·media">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://boobies.ryvrook.com/">
+<meta property="og:title" content="boobies·media &amp; booby-bot">
+<meta property="og:description" content="A self-hosted media library for a small group, and a Discord bot that files attachments and links into it. Go, SQLite, one data directory.">
+<meta property="og:image" content="https://boobies.ryvrook.com/social-card.jpg">
+<meta property="og:image:secure_url" content="https://boobies.ryvrook.com/social-card.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="boobies·media and booby-bot: a private media library, and the Discord bot that feeds it">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="boobies·media &amp; booby-bot">
+<meta name="twitter:description" content="A self-hosted media library for a small group, and a Discord bot that files attachments and links into it. Go, SQLite, one data directory.">
+<meta name="twitter:image" content="https://boobies.ryvrook.com/social-card.jpg">
+<meta name="twitter:image:alt" content="boobies·media and booby-bot: a private media library, and the Discord bot that feeds it">
+<style>
+:root{
+  --ground:#0b0b0c;
+  --raised:#141416;
+  --hairline:#232327;
+  --hairline-strong:#3a3a40;
+  --text:#ededef;
+  --muted:#8a8a93;
+  --accent:#5bc8ff;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --logo:url("data:image/webp;base64,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");
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:15px;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+a:hover{border-bottom-color:var(--accent)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+h1,h2,h3{font-family:var(--sans);font-weight:600;letter-spacing:-.02em;margin:0}
+code,pre{font-family:var(--mono)}
+
+.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+/* ---- masthead ---- */
+.masthead{border-bottom:1px solid var(--hairline)}
+.masthead .wrap{display:flex;align-items:center;gap:20px;min-height:64px;flex-wrap:wrap}
+.mark{display:flex;align-items:center;gap:10px;color:var(--text);border:0}
+.mark-logo{width:28px;height:28px;flex:none;background:var(--logo) center/contain no-repeat}
+.mark b{font-family:var(--sans);font-weight:600;font-size:15px;letter-spacing:-.01em}
+.masthead nav{margin-left:auto;display:flex;gap:22px;flex-wrap:wrap}
+.masthead nav a{color:var(--muted);font-size:13px;padding:6px 0;min-height:44px;display:flex;align-items:center}
+.masthead nav a:hover{color:var(--text)}
+
+/* ---- section scaffolding ---- */
+section{border-bottom:1px solid var(--hairline);padding:76px 0}
+.eyebrow{
+  display:flex;align-items:baseline;gap:14px;
+  color:var(--muted);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  margin-bottom:32px;
+}
+.eyebrow .num{color:var(--accent);font-variant-numeric:tabular-nums}
+.eyebrow::after{content:"";flex:1;height:1px;background:var(--hairline)}
+
+/* ---- hero ---- */
+.hero{padding:96px 0 68px}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:56px;align-items:start}
+.hero h1{font-size:clamp(38px,6.4vw,68px);line-height:1.02;letter-spacing:-.035em}
+.hero h1 .and{color:var(--muted);font-weight:400}
+.hero p.lede{
+  font-family:var(--sans);font-size:clamp(17px,2.1vw,20px);line-height:1.5;
+  color:var(--muted);max-width:46ch;margin:26px 0 0;
+}
+.hero-art{width:100%;max-width:240px;aspect-ratio:1;background:var(--logo) center/contain no-repeat}
+.cta{display:flex;gap:12px;margin-top:36px;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;min-height:44px;padding:0 20px;
+  border:1px solid var(--hairline-strong);border-radius:2px;
+  color:var(--text);font-size:13px;letter-spacing:.02em;
+}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#04252f;font-weight:600}
+.btn.primary:hover{background:#7ad4ff;border-color:#7ad4ff;color:#04252f}
+
+/* ---- spec strip ---- */
+.specs{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(min(128px,100%),1fr));
+  border-top:1px solid var(--hairline);margin-top:56px;
+}
+.spec{padding:20px 20px 20px 0;border-right:1px solid var(--hairline)}
+.spec:last-child{border-right:0}
+.spec dt{font-size:11px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+.spec dd{margin:6px 0 0;font-size:19px;font-variant-numeric:tabular-nums}
+.spec dd span{color:var(--muted);font-size:13px}
+
+/* ---- product intro ---- */
+.product-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:48px;margin-bottom:44px}
+.product-head h2{font-size:clamp(27px,3.6vw,38px);letter-spacing:-.03em}
+.product-head .role{color:var(--accent);font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px}
+.product-head p{margin:0;color:var(--muted);font-family:var(--sans);font-size:16px;line-height:1.6}
+.product-head p + p{margin-top:14px}
+
+/* ---- feature rows (not cards) ---- */
+.rows{border-top:1px solid var(--hairline)}
+.row{
+  display:grid;grid-template-columns:210px minmax(0,1fr);gap:32px;
+  padding:20px 0;border-bottom:1px solid var(--hairline);
+}
+.row dt{color:var(--text);font-size:13px;letter-spacing:.02em}
+.row dd{margin:0;color:var(--muted);font-family:var(--sans);font-size:15px;line-height:1.55}
+.row dd b{color:var(--text);font-weight:500}
+.row:hover dt{color:var(--accent)}
+
+/* ---- pipeline diagram ---- */
+.diagram{width:100%;height:auto;display:block;margin:8px 0 0}
+.diagram text{font-family:var(--mono)}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(210px,100%),1fr));gap:0;margin-top:44px;border-top:1px solid var(--hairline)}
+.step{padding:20px 22px 20px 0;border-right:1px solid var(--hairline)}
+.step:last-child{border-right:0}
+.step .n{color:var(--accent);font-size:12px;letter-spacing:.1em}
+.step h3{font-size:14px;font-family:var(--mono);font-weight:400;margin:8px 0 6px}
+.step p{margin:0;color:var(--muted);font-family:var(--sans);font-size:14px;line-height:1.5}
+
+/* ---- code ---- */
+.run{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:28px}
+.snippet{border:1px solid var(--hairline);border-radius:2px;background:var(--raised);overflow:hidden}
+.snippet header{
+  display:flex;align-items:center;gap:12px;padding:11px 14px;
+  border-bottom:1px solid var(--hairline);font-size:12px;color:var(--muted);
+}
+.snippet header b{color:var(--text);font-weight:500}
+.snippet button{
+  margin-left:auto;background:transparent;border:1px solid var(--hairline-strong);
+  color:var(--muted);border-radius:2px;padding:5px 11px;font-family:var(--mono);
+  font-size:11px;cursor:pointer;min-height:30px;
+}
+.snippet button:hover{color:var(--accent);border-color:var(--accent)}
+.snippet pre{margin:0;padding:16px 14px;overflow-x:auto;font-size:12.5px;line-height:1.75;color:var(--text)}
+.snippet pre .c{color:var(--muted)}
+.snippet pre .f{color:var(--accent)}
+.note{margin:26px 0 0;color:var(--muted);font-family:var(--sans);font-size:14px;max-width:70ch}
+
+/* ---- footer ---- */
+footer{padding:44px 0 64px;color:var(--muted);font-size:13px}
+footer .wrap{display:flex;gap:14px 28px;flex-wrap:wrap;align-items:center}
+footer nav{margin-left:auto;display:flex;gap:22px;flex-wrap:wrap}
+footer a{color:var(--muted)}
+footer a:hover{color:var(--accent)}
+
+@media (max-width:820px){
+  .hero{padding:64px 0 52px}
+  .hero-grid{grid-template-columns:1fr;gap:36px}
+  .hero-art{max-width:150px}
+    .product-head{grid-template-columns:1fr;gap:20px}
+  .row{grid-template-columns:1fr;gap:6px;padding:18px 0}
+  .spec,.step{border-right:0;border-bottom:1px solid var(--hairline);padding-right:0}
+  .spec:last-child,.step:last-child{border-bottom:0}
+  section{padding:56px 0}
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <a class="mark" href="#top"><span class="mark-logo" aria-hidden="true"></span><b>boobies·media</b></a>
+    <nav aria-label="Sections">
+      <a href="#library">Library</a>
+      <a href="#bot">Bot</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#run">Run it</a>
+      <a href="https://github.com/ryvrook/boobies-media">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <h1>A private media library, <span class="and">and the Discord bot that feeds it.</span></h1>
+        <p class="lede">Your group already posts everything in Discord. Attachments expire behind signed links, threads scroll away, and nothing is searchable six months later. These two projects fix that without handing your files to anyone.</p>
+        <div class="cta">
+          <a class="btn primary" href="#library">See what it does</a>
+          <a class="btn" href="https://github.com/ryvrook/boobies-media">boobies-media source</a>
+          <a class="btn" href="https://github.com/ryvrook/booby-bot">booby-bot source</a>
+        </div>
+      </div>
+      <div class="hero-art" role="img" aria-label="The blue-footed booby logo shared by both projects"></div>
+    </div>
+
+    <dl class="specs">
+      <div class="spec"><dt>Max file</dt><dd>8 <span>GiB</span></dd></div>
+      <div class="spec"><dt>Upload chunk</dt><dd>12 <span>MiB</span></dd></div>
+      <div class="spec"><dt>Media types</dt><dd>7</dd></div>
+      <div class="spec"><dt>Browser JS budget</dt><dd>50 <span>KB</span></dd></div>
+      <div class="spec"><dt>Bot image</dt><dd>13 <span>MB</span></dd></div>
+      <div class="spec"><dt>Inbound ports</dt><dd>0</dd></div>
+    </dl>
+  </div>
+</section>
+
+<section id="library">
+  <div class="wrap">
+    <p class="eyebrow"><span class="num">01</span> boobies-media</p>
+    <div class="product-head">
+      <div>
+        <p class="role">The library</p>
+        <h2>One Go binary, one data directory.</h2>
+      </div>
+      <div>
+        <p>A media server for a handful of people who trust each other. It stores images and video, makes them searchable, and produces share pages that unfurl properly in Discord.</p>
+        <p>No object storage, no external database, no managed services. State lives in SQLite and a directory of content-addressed files, so a backup is a copy of one folder.</p>
+      </div>
+    </div>
+    <dl class="rows">
+      <div class="row"><dt>Resumable uploads</dt><dd>Files are split into 12 MiB chunks, so a dropped connection resumes instead of restarting, and a proxy body limit never caps how large a file can be. Ceiling is <b>8 GiB</b> per file.</dd></div>
+      <div class="row"><dt>Ingest from a link</dt><dd>Paste a URL and the server fetches it: direct downloads, Discord CDN, Twitter/X, YouTube, TikTok, Medal. <b>yt-dlp</b> handles extraction with a <b>gallery-dl</b> fallback for galleries.</dd></div>
+      <div class="row"><dt>SSRF protection</dt><dd>Remote fetches validate the real connection at every redirect hop and refuse private, loopback, link-local, CGNAT and reserved destinations. A redirect cannot walk a fetch into your network.</dd></div>
+      <div class="row"><dt>Content-addressed storage</dt><dd>Blobs are keyed by SHA-256 of the stored bytes, so the same file uploaded twice occupies disk once. Reference counting keeps cleanup honest.</dd></div>
+      <div class="row"><dt>Probes and thumbnails</dt><dd>Dimensions, duration and thumbnails are produced by background workers, so an upload returns as soon as the bytes land. Optional lossless WebP conversion.</dd></div>
+      <div class="row"><dt>Folders, tags, search</dt><dd>A shared folder tree with bulk moves, free tags, keyset-paginated browsing, and a random-item endpoint for when you just want something.</dd></div>
+      <div class="row"><dt>Share pages</dt><dd>Anonymous per-item pages built for Discord's crawler, with separate routes for stills, animation and video so an embed plays instead of linking out.</dd></div>
+      <div class="row"><dt>Two ways to authenticate</dt><dd>Secure session cookies for people, <b>Authorization: Bearer</b> for machines. Passwords are argon2id; sessions and API keys are stored only as hashes.</dd></div>
+      <div class="row"><dt>Operations</dt><dd>Admin views for users, jobs, settings, dependency health and trash, plus nightly SQLite snapshots with seven-copy retention.</dd></div>
+      <div class="row"><dt>A small front end</dt><dd>Server-rendered HTML with TypeScript islands under a <b>50 KB</b> bundle budget. No framework runtime ships to the browser.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<section id="bot">
+  <div class="wrap">
+    <p class="eyebrow"><span class="num">02</span> booby-bot</p>
+    <div class="product-head">
+      <div>
+        <p class="role">The collector</p>
+        <h2>React to a message. It's filed.</h2>
+      </div>
+      <div>
+        <p>A Discord bot that saves attachments and links into the library. It never downloads a byte: it hands the media server a URL and lets the server fetch it, which is why saving a YouTube link works the same as saving a screenshot.</p>
+        <p>That decision keeps the container at 13 MB with no ffmpeg, no yt-dlp, and no volume beyond a small SQLite file.</p>
+      </div>
+    </div>
+    <dl class="rows">
+      <div class="row"><dt>Four ways to save</dt><dd>React with an emoji, post in a watched channel, run <b>/upload</b>, or pick <b>Save to media</b> from a message's context menu. The first two stay silent; the other two reply only to you.</dd></div>
+      <div class="row"><dt>Old messages work</dt><dd>Discord attachment links carry a rotating signature and expire. The bot re-fetches the message when you react, so a year-old post yields a link that is valid right now.</dd></div>
+      <div class="row"><dt>Never saved twice</dt><dd>Identity is the attachment's snowflake, <b>discord:attachment:&lt;id&gt;</b>, not its URL. Re-reacting, or pasting the CDN link for a file someone already saved, is recognised as the same item.</dd></div>
+      <div class="row"><dt>Two people, one entry</dt><dd>The save is claimed in SQLite before any network call, so simultaneous reactions race on a unique constraint rather than on the media server. Exactly one wins.</dd></div>
+      <div class="row"><dt>Restart-safe</dt><dd>Unfinished work is recorded before it is submitted. On restart the bot resumes polling, and an ambiguous claim is reported rather than resubmitted, because a duplicate is worse than a retry you can do yourself.</dd></div>
+      <div class="row"><dt>Files itself</dt><dd>Channels map to folders, forum posts inherit their parent's mapping, and every item is tagged with who posted it, which server and which channel.</dd></div>
+      <div class="row"><dt>Bounded by design</dt><dd>Per-user and per-server token buckets, a bounded queue, and a cap on URLs per message. One person cannot spend everyone's budget.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<section id="pipeline">
+  <div class="wrap">
+    <p class="eyebrow"><span class="num">03</span> How a save happens</p>
+    <svg class="diagram" viewBox="0 0 1000 132" role="img" aria-label="Flow diagram: a Discord message is claimed by booby-bot, submitted as a URL to boobies-media, which fetches, deduplicates and thumbnails it, then returns a share page that embeds back in Discord.">
+      <g fill="none" stroke="#3a3a40" stroke-width="1">
+        <rect x="1" y="34" width="196" height="64" rx="2"/>
+        <rect x="268" y="34" width="196" height="64" rx="2"/>
+        <rect x="535" y="34" width="196" height="64" rx="2"/>
+        <rect x="802" y="34" width="196" height="64" rx="2"/>
+      </g>
+      <g stroke="#5bc8ff" stroke-width="1">
+        <path d="M197 66 H262"/><path d="M464 66 H529"/><path d="M731 66 H796"/>
+      </g>
+      <g fill="#5bc8ff">
+        <path d="M262 66 l-7 -3.5 v7 z"/><path d="M529 66 l-7 -3.5 v7 z"/><path d="M796 66 l-7 -3.5 v7 z"/>
+      </g>
+      <g fill="#ededef" font-size="13">
+        <text x="17" y="62">Discord message</text>
+        <text x="284" y="62">booby-bot</text>
+        <text x="551" y="62">boobies-media</text>
+        <text x="818" y="62">Share page</text>
+      </g>
+      <g fill="#8a8a93" font-size="11">
+        <text x="17" y="82">attachment or link</text>
+        <text x="284" y="82">claim, then submit URL</text>
+        <text x="551" y="82">fetch, dedupe, thumbnail</text>
+        <text x="818" y="82">embeds back in Discord</text>
+      </g>
+      <g fill="#5bc8ff" font-size="10" letter-spacing="1">
+        <text x="17" y="22">01</text><text x="284" y="22">02</text><text x="551" y="22">03</text><text x="818" y="22">04</text>
+      </g>
+    </svg>
+    <div class="steps">
+      <div class="step">
+        <p class="n">01</p><h3>Trigger</h3>
+        <p>Someone reacts, or posts in a watched channel. The handler records identifiers and returns immediately.</p>
+      </div>
+      <div class="step">
+        <p class="n">02</p><h3>Claim</h3>
+        <p>A row is written to the bot's ledger before anything leaves the process. This is what makes a second trigger a no-op.</p>
+      </div>
+      <div class="step">
+        <p class="n">03</p><h3>Fetch</h3>
+        <p>The library downloads the URL under its own SSRF rules, deduplicates the bytes, probes metadata and builds a thumbnail.</p>
+      </div>
+      <div class="step">
+        <p class="n">04</p><h3>File</h3>
+        <p>The bot sets the folder, applies tags, and marks the message with a reaction. Nothing is posted to the channel.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="run">
+  <div class="wrap">
+    <p class="eyebrow"><span class="num">04</span> Run it yourself</p>
+    <div class="run">
+      <div class="snippet">
+        <header><b>boobies-media</b> <span>the library</span>
+          <button type="button" data-copy="media">Copy</button>
+        </header>
+<pre id="snip-media"><span class="c"># build the browser assets and the server</span>
+bun install &amp;&amp; make build
+
+<span class="c"># create the first administrator, prints an API key once</span>
+./bin/server user add admin <span class="f">--admin</span>
+
+<span class="c"># serve on loopback with a local data directory</span>
+./bin/server <span class="f">-addr</span> 127.0.0.1:8080 <span class="f">-data</span> ./data \
+  <span class="f">-base-url</span> http://localhost:8080 <span class="f">-insecure-cookies</span></pre>
+      </div>
+      <div class="snippet">
+        <header><b>booby-bot</b> <span>the collector</span>
+          <button type="button" data-copy="bot">Copy</button>
+        </header>
+<pre id="snip-bot"><span class="c"># Message Content Intent must be on in the Developer Portal</span>
+docker build <span class="f">-t</span> booby-bot .
+
+docker run <span class="f">-d</span> <span class="f">--name</span> booby-bot \
+  <span class="f">-e</span> BB_DISCORD_TOKEN <span class="f">-e</span> BB_GUILDS \
+  <span class="f">-e</span> BB_MEDIA_BASE_URL <span class="f">-e</span> BB_MEDIA_API_KEY \
+  <span class="f">-v</span> booby-bot-data:/data booby-bot</pre>
+      </div>
+    </div>
+    <p class="note">Both ship a Dockerfile. The library wants a persistent volume and a hostname; the bot wants a volume and nothing else, since it opens no listening port. Production notes, Cloudflare Tunnel topology and the full environment reference live in the repositories.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>MIT licensed. Self-host it; there is no hosted version.</span>
+    <nav aria-label="Repositories">
+      <a href="https://github.com/ryvrook/boobies-media">boobies-media</a>
+      <a href="https://github.com/ryvrook/booby-bot">booby-bot</a>
+      <a href="https://github.com/ryvrook/boobies-media/blob/main/docs/deploy.md">Deploy guide</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+document.querySelectorAll("button[data-copy]").forEach(function(button){
+  button.addEventListener("click", function(){
+    var source = document.getElementById("snip-" + button.dataset.copy);
+    if(!source) return;
+    navigator.clipboard.writeText(source.innerText).then(function(){
+      var previous = button.textContent;
+      button.textContent = "Copied";
+      setTimeout(function(){ button.textContent = previous; }, 1600);
+    }).catch(function(){
+      button.textContent = "Press Ctrl+C";
+    });
+  });
+});
+</script>
+
+</body>
+</html>
