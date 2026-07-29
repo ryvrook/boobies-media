@@ -1,6 +1,7 @@
 {
   "name": "boobies-media-web",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "build": "bun build ./web/src/main.ts --outdir ./web/static/dist --minify --target browser",

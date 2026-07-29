@@ -479,4 +479,4 @@ Additional operational detail is available in
 
 ## License
 
-No license has been selected yet.
+Licensed under the [MIT License](LICENSE). Copyright (c) 2026 CorvidData LLC.
